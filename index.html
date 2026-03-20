@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Nankai Megathrust Analyzer Pro</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #000000;
+            --panel-bg: rgba(28, 28, 30, 0.75); 
+            --border-color: rgba(255, 255, 255, 0.15);
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(235, 235, 245, 0.6);
+            --system-blue: #0A84FF;
+            --system-blue-hover: #409CFF;
+            --system-red: #FF453A;
+            --system-green: #32D74B;
+            --system-orange: #FF9F0A;
+            --system-gray: #8E8E93;
+        }
+
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+        body {
+            margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Arial, sans-serif;
+            min-height: 100vh; overflow-x: hidden; overflow-y: auto; overscroll-behavior: none; 
+        }
+
+        .glass-panel {
+            background: var(--panel-bg); backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px); border: 0.5px solid var(--border-color); border-radius: 14px; 
+        }
+
+        /* --- スタート画面 --- */
+        #home-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 10000; background-color: var(--bg-color);
+            transition: opacity 0.5s ease, transform 0.5s;
+        }
+        .home-title { font-size: 3rem; font-weight: 700; margin-bottom: 12px; text-align: center; }
+        .home-subtitle { font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 40px; text-align: center;}
+        
+        /* ファイル管理ボタン (右上) */
+        #home-files-btn {
+            position: absolute; top: max(24px, env(safe-area-inset-top)); right: max(24px, env(safe-area-inset-right));
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 0.5px solid rgba(255, 255, 255, 0.2);
+            color: white; padding: 8px 16px; border-radius: 20px; display: flex; align-items: center; gap: 8px;
+            cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;
+            animation: pulse-border 2s infinite; 
+            z-index: 10001; /* 確実に押せるように */
+        }
+        #home-files-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(10, 132, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0); }
+        }
+
+        .apple-btn {
+            background-color: var(--system-blue); color: white; border: none; padding: 12px 28px;
+            font-size: 1rem; font-weight: 600; border-radius: 20px; cursor: pointer; transition: 0.2s;
+        }
+        .apple-btn:hover:not(:disabled) { background-color: var(--system-blue-hover); }
+        .apple-btn:disabled { background-color: var(--system-gray); opacity: 0.5; cursor: not-allowed; }
+
+        /* --- メインUI --- */
+        #app-container {
+            display: none; flex-direction: column; min-height: 100vh; width: 100vw; position: relative; z-index: 1;
+            padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) calc(env(safe-area-inset-bottom, 16px) + 16px) env(safe-area-inset-left, 16px); gap: 16px;
+        }
+
+        #header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; }
+        .header-left, .header-right { display: flex; align-items: center; gap: 16px; }
+        #back-btn, #settings-btn { background: transparent; border: none; color: var(--system-blue); font-size: 1rem; cursor: pointer; padding: 0; }
+        #header h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+        #alert-status { padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; transition: 0.3s; }
+        
+        .status-normal { background: rgba(50, 215, 75, 0.15); color: var(--system-green); }
+        .status-sse { background: rgba(255, 159, 10, 0.15); color: var(--system-orange); }
+        .status-quake { background: var(--system-red); color: white; box-shadow: 0 0 15px rgba(255, 69, 58, 0.5); }
+
+        #main { display: flex; flex: 1; gap: 16px; }
+        #map-container { flex: 1.2; position: relative; overflow: hidden; min-height: 350px; }
+        .map-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
+        #map-fg { cursor: crosshair; z-index: 10; touch-action: none; }
+
+        #charts-container { flex: 1; display: flex; flex-direction: column; gap: 16px; max-width: 40%; }
+        .chart-box { flex: 1; padding: 16px; display: flex; flex-direction: column; min-height: 200px; }
+        .chart-wrapper { flex: 1; position: relative; width: 100%; margin-top: 10px; min-height: 150px; }
+        canvas.chart { width: 100% !important; height: 100% !important; }
+        .chart-title { font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; }
+        .chart-hint { font-size: 0.75rem; color: var(--text-secondary); font-weight: normal; }
+
+        #controls { padding: 12px 20px; display: flex; align-items: center; gap: 20px; }
+        button.control-btn { background: var(--panel-bg); color: var(--text-primary); border: 0.5px solid var(--border-color); padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; }
+        #timeline { flex: 1; -webkit-appearance: none; background: transparent; cursor: pointer; }
+        #timeline::-webkit-slider-runnable-track { width: 100%; height: 4px; background: rgba(255, 255, 255, 0.2); border-radius: 2px; }
+        #timeline::-webkit-slider-thumb { height: 20px; width: 20px; border-radius: 50%; background: white; cursor: pointer; -webkit-appearance: none; margin-top: -8px; }
+        #time-display { font-variant-numeric: tabular-nums; font-size: 1rem; color: var(--text-secondary); min-width: 80px; text-align: right; }
+
+        /* --- モーダル群 --- */
+        /* ★ 修正ポイント: z-indexを20000に上げてホーム画面より手前に表示させる */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); z-index: 20000; justify-content: center; align-items: center; }
+        
+        .modal-content { background: var(--panel-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 30px; border-radius: 14px; border: 0.5px solid var(--border-color); width: 85%; max-width: 450px; }
+        .modal-content h2 { margin-top: 0; font-size: 1.2rem; margin-bottom: 10px; }
+        .modal-desc { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.4;}
+        
+        /* ファイル管理モーダル用 */
+        .file-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid var(--border-color); }
+        .file-row:last-child { border-bottom: none; }
+        .file-name { font-weight: 500; font-size: 0.85rem; flex: 1; word-break: break-all;}
+        .file-status { font-size: 0.85rem; width: 30px; text-align: center; margin-right: 10px; }
+        .file-upload-label { background: var(--system-blue); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: 0.2s; white-space: nowrap;}
+        .file-upload-label:hover { background: var(--system-blue-hover); }
+
+        /* 設定モーダル用 */
+        .setting-group { margin-bottom: 20px; }
+        .setting-group label { display: block; font-size: 0.9rem; margin-bottom: 8px; color: var(--text-secondary); }
+        .setting-group input[type="range"] { width: 100%; }
+
+        @media (max-width: 768px) and (orientation: portrait) {
+            #main { flex-direction: column; flex: none; }
+            #map-container { flex: none; height: 40vh; min-height: 300px; }
+            #charts-container { max-width: 100%; flex: none; flex-direction: column; gap: 16px; }
+            .chart-box { flex: none; height: 250px; }
+            #controls { position: sticky; bottom: env(safe-area-inset-bottom, 16px); z-index: 100; box-shadow: 0 -10px 20px rgba(0,0,0,0.5); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="home-screen">
+        <button id="home-files-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            Data Files
+        </button>
+        <div class="home-content">
+            <div class="home-title">Analyzer Pro</div>
+            <div class="home-subtitle">Nankai Megathrust Simulation</div>
+            <button id="start-system-btn" class="apple-btn" disabled>Waiting for Map Data...</button>
+        </div>
+    </div>
+
+    <div id="files-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>GeoJSON Data Sources</h2>
+            <div class="modal-desc">
+                ブラウザのセキュリティ設定により自動読み込みがブロックされる場合があります。<br>その際は以下の「Load」ボタンからファイルを選択してください。
+            </div>
+            
+            <div class="file-row">
+                <span class="file-name">japan.geo.json<br><span style="color:#FF453A; font-size:10px;">(必須 Required)</span></span>
+                <span class="file-status" id="file-map-status">❌</span>
+                <label class="file-upload-label">
+                    Load<input type="file" id="input-file-map" accept=".json" style="display:none;">
+                </label>
+            </div>
+            <div class="file-row">
+                <span class="file-name">area.nankai.trough.json<br><span style="color:#8E8E93; font-size:10px;">(任意 Optional)</span></span>
+                <span class="file-status" id="file-trough-status">❌</span>
+                <label class="file-upload-label">
+                    Load<input type="file" id="input-file-trough" accept=".json" style="display:none;">
+                </label>
+            </div>
+            <div class="file-row">
+                <span class="file-name">japan_plate_boundaries.json<br><span style="color:#8E8E93; font-size:10px;">(任意 Optional)</span></span>
+                <span class="file-status" id="file-plate-status">❌</span>
+                <label class="file-upload-label">
+                    Load<input type="file" id="input-file-plates" accept=".json" style="display:none;">
+                </label>
+            </div>
+            <button id="close-files-btn" class="apple-btn" style="width: 100%; margin-top: 20px;">Close</button>
+        </div>
+    </div>
+
+    <div id="settings-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Simulation Settings</h2>
+            <div class="setting-group">
+                <label>Sensor Noise Level: <span id="noise-val">Normal</span></label>
+                <input type="range" id="param-noise" min="0" max="2" step="0.5" value="1.0">
+            </div>
+            <div class="setting-group">
+                <label>SSE (Slow Slip) Frequency: <span id="sse-val">Normal</span></label>
+                <input type="range" id="param-sse" min="20" max="80" step="10" value="40">
+            </div>
+            <button id="apply-settings-btn" class="apple-btn" style="width: 100%; margin-top: 10px;">Regenerate Data</button>
+            <button id="close-settings-btn" class="apple-btn" style="width: 100%; margin-top: 10px; background-color: var(--panel-bg); border: 1px solid var(--system-gray); color: var(--text-primary);">Cancel</button>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <div id="header" class="glass-panel">
+            <div class="header-left">
+                <button id="back-btn">‹ Home</button>
+                <h1>Nankai Analyzer Pro</h1>
+            </div>
+            <div class="header-right">
+                <div id="alert-status" class="status-normal">Normal</div>
+                <button id="settings-btn">⚙️ Set</button>
+            </div>
+        </div>
+
+        <div id="main">
+            <div id="map-container" class="glass-panel">
+                <canvas id="map-bg" class="map-layer"></canvas>
+                <canvas id="map-fg" class="map-layer"></canvas>
+            </div>
+            <div id="charts-container">
+                <div class="chart-box glass-panel">
+                    <div class="chart-title">
+                        Vertical Displacement (cm)
+                        <span class="chart-hint">Tap map to compare</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="timeSeriesChart" class="chart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-box glass-panel">
+                    <div class="chart-title">Global Slip Deficit</div>
+                    <div class="chart-wrapper">
+                        <canvas id="depthProfileChart" class="chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="controls" class="glass-panel">
+            <button id="play-pause-btn" class="control-btn" disabled>Play</button>
+            <input type="range" id="timeline" min="0" max="1000" value="1000" disabled>
+            <span id="time-display">T+ 0000</span>
+        </div>
+    </div>
+
+    <script>
+        const MAX_TIME = 1000;
+        let currentTime = 1000;
+        let isPlaying = false;
+        let playInterval;
+        let isBootstrapped = false;
+        
+        let selectedStationIds = [0]; 
+        const stationColors = ['#0A84FF', '#32D74B', '#FF9F0A', '#BF5AF2', '#FF453A'];
+
+        const stationsGeo = [
+            { id: 0, lon: 135.76, lat: 33.43, name: "潮岬" },
+            { id: 1, lon: 134.17, lat: 33.24, name: "室戸岬" },
+            { id: 2, lon: 133.01, lat: 32.72, name: "足摺岬" },
+            { id: 3, lon: 138.22, lat: 34.59, name: "御前崎" },
+            { id: 4, lon: 136.89, lat: 34.27, name: "大王崎" }
+        ];
+
+        // --- ファイル管理 (CORS対策済み) ---
+        const geoFiles = {
+            map: { url: "japan.geo.json", data: null, elId: "file-map-status" },
+            trough: { url: "area.nankai.trough.json", data: null, elId: "file-trough-status" },
+            plates: { url: "japan_plate_boundaries.json", data: null, elId: "file-plate-status" }
+        };
+
+        async function autoLoadFiles() {
+            for (const key in geoFiles) {
+                try {
+                    const res = await fetch(geoFiles[key].url);
+                    if (res.ok) {
+                        geoFiles[key].data = await res.json();
+                        document.getElementById(geoFiles[key].elId).innerText = "✅";
+                    }
+                } catch(e) { 
+                    console.log(`${geoFiles[key].url} の自動読み込みがブロックされました`); 
+                }
+            }
+            checkReady();
+        }
+
+        function checkReady() {
+            const isMapReady = geoFiles.map.data !== null;
+            const startBtn = document.getElementById('start-system-btn');
+            
+            if (isMapReady) {
+                startBtn.disabled = false;
+                startBtn.innerText = "Start Simulation";
+                document.getElementById('home-files-btn').style.animation = "none";
+            } else {
+                startBtn.disabled = true;
+                startBtn.innerText = "Waiting for Map Data...";
+            }
+            
+            if (isBootstrapped) {
+                updatePaths();
+                renderMapBG();
+            }
+        }
+
+        function setupFileInputs() {
+            const handleFile = (inputId, key) => {
+                document.getElementById(inputId).addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        try {
+                            geoFiles[key].data = JSON.parse(ev.target.result);
+                            document.getElementById(geoFiles[key].elId).innerText = "✅";
+                            checkReady();
+                        } catch(err) { alert("ファイルの解析に失敗しました。正しいJSONファイルか確認してください。"); }
+                    };
+                    reader.readAsText(file);
+                });
+            };
+            handleFile('input-file-map', 'map');
+            handleFile('input-file-trough', 'trough');
+            handleFile('input-file-plates', 'plates');
+        }
+
+        // --- シミュレーション処理 ---
+        let historyData = [];
+        let simParams = { noiseMultiplier: 1.0, sseFrequency: 40 };
+
+        function generateSimulationData() {
+            historyData = [];
+            let globalSlipDeficit = 0;
+            let currentDisplacements = stationsGeo.map(() => 0);
+
+            for (let t = 0; t <= MAX_TIME; t++) {
+                let state = { time: t, isSseActive: false, isMegaQuake: false, globalSlipDeficit: 0, stations: [] };
+                
+                globalSlipDeficit += 0.1;
+
+                if (Math.sin(t / simParams.sseFrequency) > 0.85) { 
+                    state.isSseActive = true;
+                    globalSlipDeficit -= 0.15; 
+                }
+                if (globalSlipDeficit > 50) {
+                    state.isMegaQuake = true;
+                    globalSlipDeficit = 0; 
+                }
+                if (globalSlipDeficit < 0) globalSlipDeficit = 0;
+                
+                state.globalSlipDeficit = globalSlipDeficit;
+
+                stationsGeo.forEach((station, i) => {
+                    let velocity = -0.06; 
+                    if (state.isSseActive) velocity = 0.02; 
+                    currentDisplacements[i] += velocity;
+                    if (state.isMegaQuake) currentDisplacements[i] += 25; 
+
+                    let noise = (Math.random() - 0.5) * simParams.noiseMultiplier;
+                    let val = currentDisplacements[i] + noise;
+                    
+                    let anomalyScore = state.isSseActive ? 0.8 + Math.random()*0.2 : 0.2 + Math.random()*0.2;
+                    if(state.isMegaQuake) anomalyScore = 1.0;
+
+                    state.stations.push({ id: station.id, value: val, anomaly: anomalyScore });
+                });
+                historyData.push(state);
+            }
+        }
+
+        // --- 描画処理 ---
+        let bgCanvas, fgCanvas, bgCtx, fgCtx, projection;
+        let mapPath2D = null, troughPath2D = null, platePath2D = null;
+        let currentTransform = d3.zoomIdentity;
+        let lastDrawnTransform = d3.zoomIdentity;
+        
+        function updatePaths() {
+            if (!projection) return;
+            const pathGen = d3.geoPath().projection(projection);
+            if (geoFiles.map.data) mapPath2D = new Path2D(pathGen(geoFiles.map.data));
+            if (geoFiles.trough.data) troughPath2D = new Path2D(pathGen(geoFiles.trough.data));
+            if (geoFiles.plates.data) platePath2D = new Path2D(pathGen(geoFiles.plates.data));
+        }
+
+        function drawMap() {
+            bgCanvas = document.getElementById('map-bg');
+            fgCanvas = document.getElementById('map-fg');
+            bgCtx = bgCanvas.getContext('2d');
+            fgCtx = fgCanvas.getContext('2d');
+            
+            const container = document.getElementById('map-container');
+            bgCanvas.width = fgCanvas.width = container.clientWidth;
+            bgCanvas.height = fgCanvas.height = container.clientHeight;
+
+            projection = d3.geoMercator()
+                .center([137.0, 36.0]) 
+                .scale(2000) 
+                .translate([bgCanvas.width / 2, bgCanvas.height / 2]);
+
+            updatePaths();
+
+            const zoom = d3.zoom().scaleExtent([0.5, 40])
+                .on("zoom", (event) => {
+                    currentTransform = event.transform;
+                    const s = currentTransform.k / lastDrawnTransform.k;
+                    const tx = currentTransform.x - lastDrawnTransform.x * s;
+                    const ty = currentTransform.y - lastDrawnTransform.y * s;
+                    bgCanvas.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+                    renderStationsFG();
+                })
+                .on("end", () => {
+                    lastDrawnTransform = currentTransform;
+                    renderMapBG();
+                    bgCanvas.style.transform = `translate(0px, 0px) scale(1)`;
+                });
+            
+            d3.select(fgCanvas).call(zoom);
+
+            d3.select(fgCanvas).on("click touchstart", (event) => {
+                let mx, my;
+                if (event.touches && event.touches.length > 0) {
+                    const rect = fgCanvas.getBoundingClientRect();
+                    mx = event.touches[0].clientX - rect.left;
+                    my = event.touches[0].clientY - rect.top;
+                } else {
+                    [mx, my] = d3.pointer(event);
+                }
+
+                let clickedStation = null;
+                let minDist = 25; 
+
+                stationsGeo.forEach(station => {
+                    const [px, py] = projection([station.lon, station.lat]);
+                    const screenX = px * currentTransform.k + currentTransform.x;
+                    const screenY = py * currentTransform.k + currentTransform.y;
+                    const dist = Math.sqrt(Math.pow(mx - screenX, 2) + Math.pow(my - screenY, 2));
+                    if (dist < minDist) { minDist = dist; clickedStation = station; }
+                });
+
+                if (clickedStation) {
+                    const idx = selectedStationIds.indexOf(clickedStation.id);
+                    if (idx > -1) {
+                        if (selectedStationIds.length > 1) selectedStationIds.splice(idx, 1);
+                    } else {
+                        selectedStationIds.push(clickedStation.id);
+                        if(selectedStationIds.length > 3) selectedStationIds.shift();
+                    }
+                    updateCharts();
+                    renderStationsFG();
+                }
+            });
+
+            renderMapBG();
+            renderStationsFG();
+        }
+
+        function renderMapBG() {
+            if (!bgCtx || !mapPath2D) return;
+            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            bgCtx.save();
+            bgCtx.translate(lastDrawnTransform.x, lastDrawnTransform.y);
+            bgCtx.scale(lastDrawnTransform.k, lastDrawnTransform.k);
+
+            // 日本地図描画
+            bgCtx.fillStyle = "#1C1C1E"; 
+            bgCtx.fill(mapPath2D);
+            bgCtx.lineWidth = 0.5 / lastDrawnTransform.k;
+            bgCtx.strokeStyle = "#3A3A3C";
+            bgCtx.stroke(mapPath2D);
+
+            // プレート境界線 (任意読み込み)
+            if (platePath2D) {
+                bgCtx.lineWidth = 1.2 / lastDrawnTransform.k;
+                bgCtx.strokeStyle = "rgba(255, 159, 10, 0.7)"; // System Orange
+                bgCtx.setLineDash([6 / lastDrawnTransform.k, 4 / lastDrawnTransform.k]);
+                bgCtx.stroke(platePath2D);
+                bgCtx.setLineDash([]);
+            }
+
+            // 南海トラフ領域 (任意読み込み・ヒートマップ連動)
+            if (troughPath2D) {
+                const state = historyData.length > 0 ? historyData[currentTime] : null;
+                let heatOpacity = 0.1;
+                if(state) {
+                    heatOpacity = 0.1 + (state.globalSlipDeficit / 50) * 0.6; 
+                    if(state.isMegaQuake) heatOpacity = 0.9;
+                }
+                bgCtx.fillStyle = `rgba(255, 69, 58, ${heatOpacity})`; 
+                bgCtx.fill(troughPath2D);
+                bgCtx.lineWidth = 1 / lastDrawnTransform.k;
+                bgCtx.strokeStyle = "rgba(255, 69, 58, 0.5)";
+                bgCtx.stroke(troughPath2D);
+            }
+            
+            bgCtx.restore();
+        }
+
+        function renderStationsFG() {
+            if (!fgCtx) return;
+            fgCtx.clearRect(0, 0, fgCanvas.width, fgCanvas.height);
+            const state = historyData.length > 0 ? historyData[currentTime] : null;
+
+            renderMapBG();
+
+            stationsGeo.forEach(station => {
+                const [px, py] = projection([station.lon, station.lat]);
+                const screenX = px * currentTransform.k + currentTransform.x;
+                const screenY = py * currentTransform.k + currentTransform.y;
+
+                let isAlert = false;
+                if (state) {
+                    const stData = state.stations.find(s => s.id === station.id);
+                    if (stData && stData.anomaly > 0.6) isAlert = true;
+                }
+
+                const isSelected = selectedStationIds.includes(station.id);
+                const colorIdx = selectedStationIds.indexOf(station.id);
+                const stationColor = isSelected ? stationColors[colorIdx % stationColors.length] : "#8E8E93";
+
+                if(isSelected) {
+                    fgCtx.beginPath();
+                    fgCtx.arc(screenX, screenY, 22, 0, 2 * Math.PI);
+                    fgCtx.fillStyle = `${stationColor}33`; 
+                    fgCtx.fill();
+                }
+
+                fgCtx.beginPath();
+                fgCtx.arc(screenX, screenY, isSelected ? 6 : 4, 0, 2 * Math.PI);
+                fgCtx.fillStyle = isAlert ? "#FF453A" : stationColor;
+                fgCtx.fill();
+                
+                fgCtx.lineWidth = 1.5;
+                fgCtx.strokeStyle = "#000000";
+                fgCtx.stroke();
+                
+                if(isSelected) {
+                    fgCtx.font = "600 12px -apple-system, sans-serif";
+                    fgCtx.fillStyle = "#FFFFFF";
+                    fgCtx.fillText(station.name, screenX + 14, screenY - 8);
+                }
+            });
+        }
+
+        let timeSeriesChart, depthProfileChart;
+
+        function initCharts() {
+            Chart.defaults.color = 'rgba(235, 235, 245, 0.6)';
+            Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)'; 
+            Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+
+            const ctx1 = document.getElementById('timeSeriesChart').getContext('2d');
+            timeSeriesChart = new Chart(ctx1, {
+                type: 'line',
+                data: { labels: [], datasets: [] }, 
+                options: { 
+                    responsive: true, maintainAspectRatio: false, animation: false, 
+                    plugins: { legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, color: '#FFF' } } },
+                    scales: { x: { display: false }, y: { position: 'right', border: { display: false }, grid: { color: 'rgba(255, 255, 255, 0.05)' } } } 
+                }
+            });
+
+            const ctx2 = document.getElementById('depthProfileChart').getContext('2d');
+            depthProfileChart = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: ['0km', '10km', '20km', '30km', '40km'],
+                    datasets: [{ 
+                        label: 'Slip Deficit', data: [0, 0, 0, 0, 0], borderColor: '#FF453A', backgroundColor: 'rgba(255, 69, 58, 0.2)', borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, animation: false, 
+                    plugins: { legend: { display: false } },
+                    scales: { x: { grid: { display: false } }, y: { position: 'right', min: 0, max: 100, border: { display: false } } } 
+                }
+            });
+        }
+
+        function updateUI() {
+            if (historyData.length === 0) return;
+            const state = historyData[currentTime];
+            
+            document.getElementById('time-display').innerText = `T+ ${String(currentTime).padStart(4, '0')}`;
+            document.getElementById('timeline').value = currentTime;
+
+            const statusEl = document.getElementById('alert-status');
+            if (state.isMegaQuake) {
+                statusEl.innerText = "Critical Event"; statusEl.className = "status-quake";
+            } else if (state.isSseActive) {
+                statusEl.innerText = "SSE Detected"; statusEl.className = "status-sse";
+            } else {
+                statusEl.innerText = "Normal"; statusEl.className = "status-normal";
+            }
+
+            renderStationsFG();
+            updateCharts();
+        }
+
+        function updateCharts() {
+            const currentHistory = historyData.slice(0, currentTime + 1);
+            const displayLimit = 80;
+            const slicedHistory = currentHistory.slice(-displayLimit);
+            
+            timeSeriesChart.data.labels = slicedHistory.map(d => d.time);
+            
+            const newDatasets = [];
+            selectedStationIds.forEach((id, index) => {
+                const stationName = stationsGeo.find(s => s.id === id).name;
+                const color = stationColors[index % stationColors.length];
+                
+                const rawData = slicedHistory.map(d => d.stations.find(s => s.id === id).value);
+                const windowSize = 10;
+                const filteredData = rawData.map((val, idx, arr) => {
+                    if(idx < windowSize) return val;
+                    return arr.slice(idx - windowSize, idx).reduce((a, b) => a + b, 0) / windowSize;
+                });
+
+                newDatasets.push({
+                    label: stationName, data: filteredData, borderColor: color, borderWidth: 2, tension: 0.4, pointRadius: 0
+                });
+            });
+
+            timeSeriesChart.data.datasets = newDatasets;
+            timeSeriesChart.update();
+
+            const state = historyData[currentTime];
+            const deficit = state.globalSlipDeficit;
+            depthProfileChart.data.datasets[0].data = [0, deficit * 0.4, deficit, deficit * 0.6, 0];
+            depthProfileChart.update();
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('play-pause-btn').innerText = isPlaying ? "Pause" : "Play";
+            
+            if (isPlaying) {
+                playInterval = setInterval(() => {
+                    if (currentTime < MAX_TIME) { currentTime++; updateUI(); } 
+                    else { togglePlay(); }
+                }, 50);
+            } else {
+                clearInterval(playInterval);
+            }
+        }
+
+        document.getElementById('play-pause-btn').addEventListener('click', togglePlay);
+        document.getElementById('timeline').addEventListener('input', (e) => {
+            currentTime = parseInt(e.target.value);
+            if(isPlaying) togglePlay(); 
+            updateUI();
+        });
+
+        // --- モーダル制御 ---
+        const filesOverlay = document.getElementById('files-overlay');
+        document.getElementById('home-files-btn').addEventListener('click', () => { filesOverlay.style.display = 'flex'; });
+        document.getElementById('close-files-btn').addEventListener('click', () => { filesOverlay.style.display = 'none'; });
+
+        const settingsOverlay = document.getElementById('settings-overlay');
+        document.getElementById('settings-btn').addEventListener('click', () => { settingsOverlay.style.display = 'flex'; });
+        document.getElementById('close-settings-btn').addEventListener('click', () => { settingsOverlay.style.display = 'none'; });
+        
+        document.getElementById('param-noise').addEventListener('input', (e) => {
+            let val = parseFloat(e.target.value);
+            document.getElementById('noise-val').innerText = val === 0 ? "Off" : (val > 1 ? "High" : "Normal");
+        });
+        document.getElementById('param-sse').addEventListener('input', (e) => {
+            let val = parseInt(e.target.value);
+            document.getElementById('sse-val').innerText = val < 30 ? "High" : (val > 60 ? "Low" : "Normal");
+        });
+        document.getElementById('apply-settings-btn').addEventListener('click', () => {
+            simParams.noiseMultiplier = parseFloat(document.getElementById('param-noise').value);
+            simParams.sseFrequency = parseInt(document.getElementById('param-sse').value);
+            settingsOverlay.style.display = 'none';
+            generateSimulationData(); 
+            updateUI(); 
+        });
+
+        // --- 起動シーケンス ---
+        function startSimulation() {
+            document.getElementById('play-pause-btn').disabled = false;
+            document.getElementById('timeline').disabled = false;
+            currentTime = 0;
+            updateUI();
+        }
+
+        async function bootstrap() {
+            if (isBootstrapped) { startSimulation(); return; }
+            generateSimulationData();
+            initCharts();
+            drawMap();
+            isBootstrapped = true;
+            startSimulation();
+        }
+
+        document.getElementById('start-system-btn').addEventListener('click', () => {
+            if (!geoFiles.map.data) return;
+            const homeScreen = document.getElementById('home-screen');
+            homeScreen.style.opacity = '0';
+            setTimeout(() => {
+                homeScreen.style.display = 'none';
+                document.getElementById('app-container').style.display = 'flex';
+                window.dispatchEvent(new Event('resize'));
+                bootstrap();
+            }, 500); 
+        });
+
+        document.getElementById('back-btn').addEventListener('click', () => {
+            if(isPlaying) togglePlay(); 
+            const appContainer = document.getElementById('app-container');
+            const homeScreen = document.getElementById('home-screen');
+            appContainer.style.display = 'none';
+            homeScreen.style.display = 'flex';
+            setTimeout(() => homeScreen.style.opacity = '1', 10);
+        });
+
+        window.addEventListener('resize', () => {
+            if(bgCanvas && fgCanvas && currentGeoData) {
+                const container = document.getElementById('map-container');
+                bgCanvas.width = fgCanvas.width = container.clientWidth;
+                bgCanvas.height = fgCanvas.height = container.clientHeight;
+                projection.translate([bgCanvas.width / 2, bgCanvas.height / 2]);
+                updatePaths();
+                lastDrawnTransform = currentTransform;
+                renderMapBG();
+                renderStationsFG();
+            }
+        });
+
+        // ページロード時にファイル群を自動読み込み
+        window.onload = () => {
+            setupFileInputs();
+            autoLoadFiles();
+        };
+    </script>
+</body>
+</html>
