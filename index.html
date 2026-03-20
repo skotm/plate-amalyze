@@ -227,11 +227,10 @@
         let simulationState = {};
         let timelineClusters = [];
 
-        // ▼ 赤いモヤの中心を大王崎・御前崎に設定
         const segmentCenters = { 
             nankai: [133.5, 32.8], 
-            tonankai: [136.89, 34.27], // 大王崎
-            tokai: [138.22, 34.59]     // 御前崎
+            tonankai: [136.89, 34.27], 
+            tokai: [138.22, 34.59]     
         };
         const lanesY = { tokai: 0.3, tonankai: 0.5, nankai: 0.7 }; 
         const laneColors = { tokai: '#FF9F0A', tonankai: '#32D74B', nankai: '#0A84FF' };
@@ -326,8 +325,23 @@
                 }
             }
 
+            // ▼ ここが修正ポイント：限界直前での非線形カーブ（プレスリップ）の導入
             stationsGeo.forEach((station) => {
-                let idealDisp = station.baseDisp + (segs[station.segment].deficit * station.factor);
+                let currentDeficit = segs[station.segment].deficit;
+                let currentThreshold = segs[station.segment].threshold;
+
+                // 限界への接近度合い (0.0 〜 1.0)
+                let strainRatio = currentDeficit / currentThreshold;
+                
+                // 限界直前で急激に効く「剥がれ（プレスリップ）」のエフェクト（4乗カーブ）
+                let yieldEffect = Math.pow(strainRatio, 4);
+                
+                // 限界に達した時、本来の沈み込みから最大25%ほどブレーキがかかる（実質的なひずみ量）
+                let effectiveDeficit = currentDeficit * (1.0 - 0.25 * yieldEffect);
+
+                // 計算された実質ひずみ量を使って沈降を計算
+                let idealDisp = station.baseDisp + (effectiveDeficit * station.factor);
+                
                 let noise = (Math.random() - 0.5) * 2.0 * simParams.noiseLevel; 
                 state.stations.push({ id: station.id, value: idealDisp + noise, segment: station.segment });
             });
@@ -504,13 +518,11 @@
             setTimeout(() => { resizeAllCanvas(); }, 50);
         });
 
-        // ▼ 修正：let変数の参照エラーを回避するため、ゲッター/セッターを使用。
-        // また、requestAnimationFrame を使って再描画の頻度を最適化（処理落ち防止）
         function setupPan(wrapperId, btnId, getOffset, setOffset, maxWindow) {
             const wrapper = document.getElementById(wrapperId); 
             const btn = document.getElementById(btnId); 
             let startX = null, startOffset = 0;
-            let isDrawing = false; // 描画中かどうかのフラグ
+            let isDrawing = false; 
 
             wrapper.addEventListener('pointerdown', (e) => { 
                 startX = e.clientX; 
@@ -525,13 +537,9 @@
                     setOffset(newOffset);
                     btn.style.display = newOffset > 0 ? 'block' : 'none'; 
                     
-                    // 処理落ち防止: 次の画面更新のタイミングで1回だけ再描画する
                     if (!isDrawing) {
                         isDrawing = true;
-                        requestAnimationFrame(() => {
-                            updateCharts();
-                            isDrawing = false;
-                        });
+                        requestAnimationFrame(() => { updateCharts(); isDrawing = false; });
                     }
                 } 
             });
@@ -560,7 +568,6 @@
             });
         }
 
-        // ▼ 修正：window[] ではなく、関数経由で変数を直接読み書きする
         setupPan('time-series-wrapper', 'reset-pan-btn', () => chartPanOffset, (val) => { chartPanOffset = val; }, CHART_WINDOW);
         setupPan('timeline-wrapper', 'reset-tl-btn', () => tlPanOffset, (val) => { tlPanOffset = val; }, TIMELINE_WINDOW);
 
