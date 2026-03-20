@@ -3,144 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Nankai Megathrust Analyzer Pro</title>
+    <title>Nankai Megathrust Digital Twin</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         :root {
-            --bg-color: #000000;
-            --panel-bg: rgba(28, 28, 30, 0.75); 
-            --border-color: rgba(255, 255, 255, 0.15);
-            --text-primary: #FFFFFF;
-            --text-secondary: rgba(235, 235, 245, 0.6);
-            --system-blue: #0A84FF;
-            --system-blue-hover: #409CFF;
-            --system-red: #FF453A;
-            --system-green: #32D74B;
-            --system-orange: #FF9F0A;
-            --system-gray: #8E8E93;
+            --bg-color: #000000; --panel-bg: rgba(28, 28, 30, 0.75); --border-color: rgba(255, 255, 255, 0.15);
+            --text-primary: #FFFFFF; --text-secondary: rgba(235, 235, 245, 0.6); --system-blue: #0A84FF;
+            --system-blue-hover: #409CFF; --system-red: #FF453A; --system-green: #32D74B;
+            --system-orange: #FF9F0A; --system-gray: #8E8E93; --system-purple: #BF5AF2; --system-yellow: #FFD60A;
         }
 
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-
-        body {
-            margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-primary);
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Arial, sans-serif;
-            min-height: 100vh; overflow-x: hidden; overflow-y: auto; overscroll-behavior: none; 
+        
+        body { 
+            margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-primary); 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; 
         }
+        
+        .glass-panel { background: var(--panel-bg); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border: 0.5px solid var(--border-color); border-radius: 14px; }
 
-        .glass-panel {
-            background: var(--panel-bg); backdrop-filter: saturate(180%) blur(20px);
-            -webkit-backdrop-filter: saturate(180%) blur(20px); border: 0.5px solid var(--border-color); border-radius: 14px; 
-        }
-
-        /* --- スタート画面 --- */
-        #home-screen {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 10000; background-color: var(--bg-color);
-            transition: opacity 0.5s ease, transform 0.5s;
-        }
+        #home-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; background-color: var(--bg-color); transition: opacity 0.5s ease, transform 0.5s; }
         .home-title { font-size: 3rem; font-weight: 700; margin-bottom: 12px; text-align: center; }
         .home-subtitle { font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 40px; text-align: center;}
         
-        #home-files-btn {
-            position: absolute; top: max(24px, env(safe-area-inset-top)); right: max(24px, env(safe-area-inset-right));
-            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 0.5px solid rgba(255, 255, 255, 0.2);
-            color: white; padding: 8px 16px; border-radius: 20px; display: flex; align-items: center; gap: 8px;
-            cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;
-            animation: pulse-border 2s infinite; z-index: 10001;
-        }
+        #home-files-btn { position: absolute; top: max(24px, env(safe-area-inset-top)); right: max(24px, env(safe-area-inset-right)); background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 0.5px solid rgba(255, 255, 255, 0.2); color: white; padding: 8px 16px; border-radius: 20px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: background 0.2s; z-index: 10001; }
         #home-files-btn:hover { background: rgba(255, 255, 255, 0.2); }
-        @keyframes pulse-border {
-            0% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(10, 132, 255, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0); }
-        }
 
-        .apple-btn {
-            background-color: var(--system-blue); color: white; border: none; padding: 12px 28px;
-            font-size: 1rem; font-weight: 600; border-radius: 20px; cursor: pointer; transition: 0.2s;
-        }
+        .apple-btn { background-color: var(--system-blue); color: white; border: none; padding: 12px 28px; font-size: 1rem; font-weight: 600; border-radius: 20px; cursor: pointer; transition: 0.2s; }
         .apple-btn:hover:not(:disabled) { background-color: var(--system-blue-hover); }
         .apple-btn:disabled { background-color: var(--system-gray); opacity: 0.5; cursor: not-allowed; }
 
-        /* --- メインUI --- */
-        #app-container {
-            display: none; flex-direction: column; min-height: 100vh; width: 100vw; position: relative; z-index: 1;
-            padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) calc(env(safe-area-inset-bottom, 16px) + 16px) env(safe-area-inset-left, 16px); gap: 16px;
+        #app-container { 
+            display: none; flex-direction: column; height: 100vh; height: 100dvh; position: relative; z-index: 1; 
+            padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) calc(env(safe-area-inset-bottom, 16px) + 16px) env(safe-area-inset-left, 16px); 
+            gap: 16px; overflow: hidden;
         }
 
-        #header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; }
+        #header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; flex-shrink: 0;}
         .header-left, .header-right { display: flex; align-items: center; gap: 16px; }
-        #back-btn, #settings-btn { background: transparent; border: none; color: var(--system-blue); font-size: 1rem; cursor: pointer; padding: 0; }
-        #header h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+        #back-btn, #settings-btn { background: transparent; border: none; color: var(--system-blue); font-size: 1rem; cursor: pointer; padding: 0; font-weight: 500;}
+        #header h1 { margin: 0; font-size: 1.1rem; font-weight: 600; display: none;} 
+        @media (min-width: 600px) { #header h1 { display: block; } }
+        
         #alert-status { padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; transition: 0.3s; }
         .status-normal { background: rgba(50, 215, 75, 0.15); color: var(--system-green); }
-        .status-sse { background: rgba(255, 159, 10, 0.15); color: var(--system-orange); }
         .status-quake { background: var(--system-red); color: white; box-shadow: 0 0 15px rgba(255, 69, 58, 0.5); }
+        .status-warn { background: rgba(255, 159, 10, 0.2); color: var(--system-orange); }
 
-        #main { display: flex; flex: 1; gap: 16px; }
+        #main { display: flex; flex: 1; gap: 16px; min-height: 0; overflow: hidden; }
+        #map-container { flex: 1.2; position: relative; overflow: hidden; min-height: 350px; transition: opacity 0.2s;}
+        .map-layer { position: absolute; top: 0; left: 0; transform-origin: 0 0; pointer-events: none; }
+        #map-bg { z-index: 1; } #map-trough { z-index: 2; } #map-fg { z-index: 10; } 
+        #zoom-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; touch-action: none; cursor: grab; }
+
+        #charts-container { 
+            flex: 1; display: flex; flex-direction: column; gap: 16px; max-width: 40%; 
+            overflow-y: auto; overflow-x: hidden; padding-right: 4px; overscroll-behavior: contain; min-height: 0;
+        }
+        #charts-container::-webkit-scrollbar { width: 6px; }
+        #charts-container::-webkit-scrollbar-track { background: transparent; }
+        #charts-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+
+        .chart-box { flex-shrink: 0; padding: 16px; display: flex; flex-direction: column; min-height: 220px; transition: opacity 0.2s;}
+        .chart-wrapper { flex: 1; position: relative; width: 100%; margin-top: 10px; min-height: 150px; cursor: grab; touch-action: none; }
+        .chart-wrapper:active { cursor: grabbing; }
+        canvas.chart { width: 100% !important; height: 100% !important; pointer-events: none; }
         
-        #map-container { flex: 1.2; position: relative; overflow: hidden; min-height: 350px; }
-        .map-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
-        #map-bg { z-index: 1; } 
-        #map-trough { z-index: 2; opacity: 0; transition: opacity 0.1s linear; } 
-        #map-fg { cursor: crosshair; z-index: 10; touch-action: none; } 
+        .chart-title { font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center;}
+        .chart-title-left { display: flex; align-items: center; }
+        .chart-hint { font-size: 0.75rem; color: var(--text-secondary); font-weight: normal; margin-left: 8px; }
+        .chart-actions { display: flex; align-items: center; gap: 8px; }
+        
+        .reset-btn { background: var(--system-blue); color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; display: none; }
+        .expand-btn { background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); border: 0.5px solid rgba(255, 255, 255, 0.2); color: white; padding: 2px 8px; border-radius: 6px; cursor: pointer; font-size: 1.1rem; line-height: 1; transition: 0.2s; z-index: 100;}
+        .expand-btn:hover { background: rgba(255, 255, 255, 0.2); }
 
-        #charts-container { flex: 1; display: flex; flex-direction: column; gap: 16px; max-width: 40%; }
-        .chart-box { flex: 1; padding: 16px; display: flex; flex-direction: column; min-height: 200px; }
-        .chart-wrapper { flex: 1; position: relative; width: 100%; margin-top: 10px; min-height: 150px; }
-        canvas.chart { width: 100% !important; height: 100% !important; }
-        .chart-title { font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; }
-        .chart-hint { font-size: 0.75rem; color: var(--text-secondary); font-weight: normal; }
+        .fullscreen-target {
+            position: fixed !important;
+            top: 0; left: 0;
+            width: 100vw !important; height: 100dvh !important;
+            z-index: 990; 
+            background-color: var(--bg-color); 
+            border-radius: 0; border: none; margin: 0; max-width: none !important;
+        }
+        .chart-box.fullscreen-target {
+            padding: max(20px, env(safe-area-inset-top)) 20px calc(80px + env(safe-area-inset-bottom)) 20px;
+        }
 
-        #controls { padding: 12px 20px; display: flex; align-items: center; gap: 20px; }
-        button.control-btn { background: var(--panel-bg); color: var(--text-primary); border: 0.5px solid var(--border-color); padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; }
-        #timeline { flex: 1; -webkit-appearance: none; background: transparent; cursor: pointer; }
-        #timeline::-webkit-slider-runnable-track { width: 100%; height: 4px; background: rgba(255, 255, 255, 0.2); border-radius: 2px; }
-        #timeline::-webkit-slider-thumb { height: 20px; width: 20px; border-radius: 50%; background: white; cursor: pointer; -webkit-appearance: none; margin-top: -8px; }
-        #time-display { font-variant-numeric: tabular-nums; font-size: 1rem; color: var(--text-secondary); min-width: 80px; text-align: right; }
+        #controls { padding: 12px 20px; display: flex; justify-content: center; align-items: center; gap: 24px; position: relative; flex-shrink: 0; z-index: 1000; }
+        button.control-btn { background: var(--panel-bg); color: var(--text-primary); border: 0.5px solid var(--border-color); padding: 10px 30px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem;}
+        #time-display { font-variant-numeric: tabular-nums; font-size: 1.2rem; font-weight: 700; color: var(--system-blue); letter-spacing: 1px; }
 
-        /* --- モーダル群 --- */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); z-index: 20000; justify-content: center; align-items: center; }
         .modal-content { background: var(--panel-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 30px; border-radius: 14px; border: 0.5px solid var(--border-color); width: 85%; max-width: 450px; }
         .modal-content h2 { margin-top: 0; font-size: 1.2rem; margin-bottom: 10px; }
         .modal-desc { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.4;}
-        
         .file-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid var(--border-color); }
         .file-row:last-child { border-bottom: none; }
         .file-name { font-weight: 500; font-size: 0.85rem; flex: 1; word-break: break-all;}
         .file-status { font-size: 0.85rem; width: 30px; text-align: center; margin-right: 10px; }
         .file-upload-label { background: var(--system-blue); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: 0.2s; white-space: nowrap;}
-        .file-upload-label:hover { background: var(--system-blue-hover); }
-
-        .setting-group { margin-bottom: 20px; }
-        .setting-group label { display: block; font-size: 0.9rem; margin-bottom: 8px; color: var(--text-secondary); }
-        .setting-group input[type="range"] { width: 100%; }
+        .setting-row { margin-bottom: 20px; }
+        .setting-label { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px; }
+        .setting-val { color: var(--system-blue); }
+        .setting-slider { width: 100%; }
+        select.setting-select { width: 100%; padding: 8px; background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; }
 
         @media (max-width: 768px) and (orientation: portrait) {
-            #main { flex-direction: column; flex: none; }
-            #map-container { flex: none; height: 40vh; min-height: 300px; }
-            #charts-container { max-width: 100%; flex: none; flex-direction: column; gap: 16px; }
+            #main { flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+            #map-container { flex: none; height: 35vh; min-height: 250px; }
+            #charts-container { max-width: 100%; flex: 1; flex-direction: column; gap: 16px; overflow-y: auto; min-height: 0; }
             .chart-box { flex: none; height: 250px; }
-            #controls { position: sticky; bottom: env(safe-area-inset-bottom, 16px); z-index: 100; box-shadow: 0 -10px 20px rgba(0,0,0,0.5); }
+            #controls { position: relative; z-index: 1000; box-shadow: 0 -10px 20px rgba(0,0,0,0.5); flex-shrink: 0; }
         }
     </style>
 </head>
 <body>
 
     <div id="home-screen">
-        <button id="home-files-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-            Data Files
-        </button>
+        <button id="home-files-btn">Data Files</button>
         <div class="home-content">
-            <div class="home-title">Analyzer Pro</div>
-            <div class="home-subtitle">Nankai Megathrust Simulation</div>
+            <div class="home-title">Digital Twin Pro</div>
+            <div class="home-subtitle">Nankai Megathrust Simulation Engine</div>
             <button id="start-system-btn" class="apple-btn" disabled>Waiting for Map Data...</button>
         </div>
     </div>
@@ -148,24 +135,10 @@
     <div id="files-overlay" class="modal-overlay">
         <div class="modal-content">
             <h2>GeoJSON Data Sources</h2>
-            <div class="modal-desc">
-                ブラウザのセキュリティ設定により自動読み込みがブロックされる場合があります。<br>その際は以下の「Load」ボタンからファイルを選択してください。
-            </div>
-            <div class="file-row">
-                <span class="file-name">japan.geo.json<br><span style="color:#FF453A; font-size:10px;">(必須 Required)</span></span>
-                <span class="file-status" id="file-map-status">❌</span>
-                <label class="file-upload-label">Load<input type="file" id="input-file-map" style="display:none;"></label>
-            </div>
-            <div class="file-row">
-                <span class="file-name">area.nankai.trough.json<br><span style="color:#8E8E93; font-size:10px;">(任意 Optional)</span></span>
-                <span class="file-status" id="file-trough-status">❌</span>
-                <label class="file-upload-label">Load<input type="file" id="input-file-trough" style="display:none;"></label>
-            </div>
-            <div class="file-row">
-                <span class="file-name">japan_plate_boundaries.json<br><span style="color:#8E8E93; font-size:10px;">(任意 Optional)</span></span>
-                <span class="file-status" id="file-plate-status">❌</span>
-                <label class="file-upload-label">Load<input type="file" id="input-file-plates" style="display:none;"></label>
-            </div>
+            <div class="modal-desc">自動読み込みがブロックされた場合はファイルを選択してください。</div>
+            <div class="file-row"><span class="file-name">japan.geo.json<br><span style="color:#FF453A; font-size:10px;">(必須)</span></span><span class="file-status" id="file-map-status">❌</span><label class="file-upload-label">Load<input type="file" id="input-file-map" style="display:none;"></label></div>
+            <div class="file-row"><span class="file-name">area.nankai.trough.json<br><span style="color:#8E8E93; font-size:10px;">(任意)</span></span><span class="file-status" id="file-trough-status">❌</span><label class="file-upload-label">Load<input type="file" id="input-file-trough" style="display:none;"></label></div>
+            <div class="file-row"><span class="file-name">japan_plate_boundaries.json<br><span style="color:#8E8E93; font-size:10px;">(任意)</span></span><span class="file-status" id="file-plate-status">❌</span><label class="file-upload-label">Load<input type="file" id="input-file-plates" style="display:none;"></label></div>
             <button id="close-files-btn" class="apple-btn" style="width: 100%; margin-top: 20px;">Close</button>
         </div>
     </div>
@@ -173,568 +146,566 @@
     <div id="settings-overlay" class="modal-overlay">
         <div class="modal-content">
             <h2>Simulation Settings</h2>
-            <div class="setting-group" style="margin-bottom: 20px;">
-                <label style="display:block; margin-bottom:8px; color:#8E8E93;">Sensor Noise Level: <span id="noise-val">Normal</span></label>
-                <input type="range" id="param-noise" min="0" max="2" step="0.5" value="1.0" style="width:100%;">
-            </div>
-            <div class="setting-group" style="margin-bottom: 20px;">
-                <label style="display:block; margin-bottom:8px; color:#8E8E93;">SSE (Slow Slip) Frequency: <span id="sse-val">Normal</span></label>
-                <input type="range" id="param-sse" min="20" max="80" step="10" value="40" style="width:100%;">
-            </div>
-            <button id="apply-settings-btn" class="apple-btn" style="width: 100%; margin-top: 10px;">Regenerate Data</button>
-            <button id="close-settings-btn" class="apple-btn" style="width: 100%; margin-top: 10px; background-color: var(--panel-bg); border: 1px solid var(--system-gray); color: var(--text-primary);">Cancel</button>
+            <div class="setting-row"><div class="setting-label"><span>Time Unit</span></div><select id="param-time-unit" class="setting-select"><option value="year" selected>Year (年単位)</option><option value="month">Month (月単位)</option><option value="day">Day (日単位)</option></select></div>
+            <div class="setting-row"><div class="setting-label"><span>Sensor Noise Level</span><span class="setting-val" id="val-noise">4.0 cm</span></div><input type="range" id="param-noise" class="setting-slider" min="0" max="10" step="0.5" value="4.0"></div>
+            <div class="setting-row"><div class="setting-label"><span>Slow Slip (SSE) Frequency</span><span class="setting-val" id="val-sse">3%</span></div><input type="range" id="param-sse" class="setting-slider" min="0" max="30" step="1" value="3"></div>
+            <div class="setting-row"><div class="setting-label"><span>Playback Speed</span><span class="setting-val" id="val-speed">Normal</span></div><input type="range" id="param-speed" class="setting-slider" min="20" max="200" step="20" value="100"></div>
+            <button id="apply-settings-btn" class="apple-btn" style="width: 100%; margin-top: 10px;">Apply & Restart</button>
+            <button id="close-settings-btn" style="width: 100%; margin-top: 10px; background: transparent; border: none; color: var(--text-secondary); padding: 10px; cursor: pointer;">Cancel</button>
         </div>
     </div>
 
     <div id="app-container">
         <div id="header" class="glass-panel">
-            <div class="header-left">
-                <button id="back-btn">‹ Home</button>
-                <h1>Nankai Analyzer Pro</h1>
-            </div>
-            <div class="header-right">
-                <div id="alert-status" class="status-normal">Normal</div>
-                <button id="settings-btn">⚙️ Set</button>
-            </div>
+            <div class="header-left"><button id="back-btn">‹ Home</button><h1>Digital Twin Pro</h1></div>
+            <div class="header-right"><button id="settings-btn">⚙️ Settings</button><div id="alert-status" class="status-normal">System Ready</div></div>
         </div>
 
         <div id="main">
             <div id="map-container" class="glass-panel">
+                <button id="map-expand-btn" class="expand-btn" style="position: absolute; top: 16px; right: 16px; width: 32px; height: 32px;">⛶</button>
                 <canvas id="map-bg" class="map-layer"></canvas>
                 <canvas id="map-trough" class="map-layer"></canvas>
                 <canvas id="map-fg" class="map-layer"></canvas>
+                <div id="zoom-overlay"></div>
             </div>
+            
             <div id="charts-container">
                 <div class="chart-box glass-panel">
-                    <div class="chart-title">Vertical Displacement (cm) <span class="chart-hint">Tap map to compare</span></div>
-                    <div class="chart-wrapper"><canvas id="timeSeriesChart" class="chart"></canvas></div>
+                    <div class="chart-title">
+                        <div class="chart-title-left">Vertical Disp. (cm)</div>
+                        <div class="chart-actions">
+                            <button id="reset-pan-btn" class="reset-btn">Live</button>
+                            <button class="expand-btn" onclick="toggleFullscreen(this)">⛶</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper" id="time-series-wrapper"><canvas id="timeSeriesChart" class="chart"></canvas></div>
                 </div>
+                
                 <div class="chart-box glass-panel">
-                    <div class="chart-title">Global Slip Deficit</div>
-                    <div class="chart-wrapper"><canvas id="depthProfileChart" class="chart"></canvas></div>
+                    <div class="chart-title">
+                        <div class="chart-title-left">Slip Deficit by Segment</div>
+                        <div class="chart-actions">
+                            <button class="expand-btn" onclick="toggleFullscreen(this)">⛶</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper"><canvas id="deficitChart" class="chart"></canvas></div>
+                </div>
+
+                <div class="chart-box glass-panel" style="flex: 1.5; min-height: 250px;">
+                    <div class="chart-title">
+                        <div class="chart-title-left">Rupture Timeline <span class="chart-hint">(Mag & Interval)</span></div>
+                        <div class="chart-actions">
+                            <button id="reset-tl-btn" class="reset-btn">Live</button>
+                            <button class="expand-btn" onclick="toggleFullscreen(this)">⛶</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper" id="timeline-wrapper">
+                        <canvas id="timelineChart" class="chart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div id="controls" class="glass-panel">
             <button id="play-pause-btn" class="control-btn" disabled>Play</button>
-            <input type="range" id="timeline" min="0" max="1000" value="1000" disabled>
-            <span id="time-display">T+ 0000</span>
+            <span id="time-display">Year +0</span>
         </div>
     </div>
 
     <script>
-        const MAX_TIME = 1000;
-        let currentTime = 1000;
-        let isPlaying = false;
-        let playInterval;
-        let isBootstrapped = false;
+        // --- 設定と状態変数 ---
+        let simParams = { timeUnit: 'year', noiseLevel: 4.0, sseProbability: 0.03, playSpeedMs: 100 };
+        const CHART_WINDOW = 100; 
+        const TIMELINE_WINDOW = 400; 
         
-        let selectedStationIds = [0]; 
-        const stationColors = ['#0A84FF', '#32D74B', '#FF9F0A', '#BF5AF2', '#FF453A'];
+        let currentTime = 0; let isPlaying = false; let playInterval; let isBootstrapped = false;
+        let chartPanOffset = 0; let tlPanOffset = 0; 
+        let activeShockwaves = [];
+        
+        let historyData = [];
+        let simulationState = {};
+        let timelineClusters = [];
+
+        // ▼ 赤いモヤの中心を大王崎・御前崎に設定
+        const segmentCenters = { 
+            nankai: [133.5, 32.8], 
+            tonankai: [136.89, 34.27], // 大王崎
+            tokai: [138.22, 34.59]     // 御前崎
+        };
+        const lanesY = { tokai: 0.3, tonankai: 0.5, nankai: 0.7 }; 
+        const laneColors = { tokai: '#FF9F0A', tonankai: '#32D74B', nankai: '#0A84FF' };
 
         const stationsGeo = [
-            { id: 0, lon: 135.76, lat: 33.43, name: "潮岬" },
-            { id: 1, lon: 134.17, lat: 33.24, name: "室戸岬" },
-            { id: 2, lon: 133.01, lat: 32.72, name: "足摺岬" },
-            { id: 3, lon: 138.22, lat: 34.59, name: "御前崎" },
-            { id: 4, lon: 136.89, lat: 34.27, name: "大王崎" }
+            { id: 0, lon: 135.76, lat: 33.43, name: "潮岬",   segment: "tonankai", baseDisp: 0, factor: -0.08 },
+            { id: 1, lon: 134.17, lat: 33.24, name: "室戸岬", segment: "nankai",   baseDisp: 0, factor: -0.12 },
+            { id: 2, lon: 133.01, lat: 32.72, name: "足摺岬", segment: "nankai",   baseDisp: 0, factor: -0.09 },
+            { id: 3, lon: 138.22, lat: 34.59, name: "御前崎", segment: "tokai",    baseDisp: 0, factor: -0.10 },
+            { id: 4, lon: 136.89, lat: 34.27, name: "大王崎", segment: "tonankai", baseDisp: 0, factor: -0.07 }
         ];
+        let selectedStationIds = [1, 3]; const stationColors = ['#0A84FF', '#32D74B', '#FF9F0A', '#BF5AF2', '#FF453A'];
 
-        // --- ファイル管理 ---
-        const geoFiles = {
-            map: { url: "japan.geo.json", data: null, elId: "file-map-status" },
-            trough: { url: "area.nankai.trough.json", data: null, elId: "file-trough-status" },
-            plates: { url: "japan_plate_boundaries.json", data: null, elId: "file-plate-status" }
-        };
+        const geoFiles = { map: { url: "japan.geo.json", data: null, elId: "file-map-status" }, trough: { url: "area.nankai.trough.json", data: null, elId: "file-trough-status" }, plates: { url: "japan_plate_boundaries.json", data: null, elId: "file-plate-status" } };
+        async function autoLoadFiles() { for (const key in geoFiles) { try { const res = await fetch(geoFiles[key].url); if (res.ok) { geoFiles[key].data = await res.json(); document.getElementById(geoFiles[key].elId).innerText = "✅"; } } catch(e) {} } checkReady(); }
+        function checkReady() { const startBtn = document.getElementById('start-system-btn'); if (geoFiles.map.data) { startBtn.disabled = false; startBtn.innerText = "Start System"; } else { startBtn.disabled = true; startBtn.innerText = "Waiting for Map Data..."; } }
+        function setupFileInputs() { const handleFile = (inputId, key) => { document.getElementById(inputId).addEventListener('change', (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { try { geoFiles[key].data = JSON.parse(ev.target.result); document.getElementById(geoFiles[key].elId).innerText = "✅"; checkReady(); } catch(err) {} }; reader.readAsText(file); e.target.value = ''; }); }; handleFile('input-file-map', 'map'); handleFile('input-file-trough', 'trough'); handleFile('input-file-plates', 'plates'); }
 
-        async function autoLoadFiles() {
-            for (const key in geoFiles) {
-                try {
-                    const res = await fetch(geoFiles[key].url);
-                    if (res.ok) {
-                        geoFiles[key].data = await res.json();
-                        document.getElementById(geoFiles[key].elId).innerText = "✅";
-                    }
-                } catch(e) { console.log(`${geoFiles[key].url} の自動読み込みがブロックされました`); }
+        function getMagSingle() { return 7.9 + (Math.random() * 0.6 - 0.3); } 
+        function getMagDouble() { return 8.3 + (Math.random() * 0.8 - 0.4); } 
+        function getMagTriple() { return 9.0 + (Math.random() * 0.6 - 0.3); } 
+
+        function createCluster(time, segments) {
+            let type = segments.length;
+            let m = type === 3 ? getMagTriple() : (type === 2 ? getMagDouble() : getMagSingle());
+            let interval = null;
+            if (timelineClusters.length > 0) {
+                interval = time - timelineClusters[timelineClusters.length - 1].startTime;
+                if (interval === 0) interval = null; 
             }
-            checkReady();
-        }
-
-        function checkReady() {
-            const isMapReady = geoFiles.map.data !== null;
-            const startBtn = document.getElementById('start-system-btn');
-            
-            if (isMapReady) {
-                startBtn.disabled = false;
-                startBtn.innerText = "Start Simulation";
-                document.getElementById('home-files-btn').style.animation = "none";
-            } else {
-                startBtn.disabled = true;
-                startBtn.innerText = "Waiting for Map Data...";
-            }
-            
-            if (isBootstrapped) {
-                updatePaths();
-                renderStaticMaps();
-            }
-        }
-
-        function setupFileInputs() {
-            const handleFile = (inputId, key) => {
-                document.getElementById(inputId).addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        try {
-                            geoFiles[key].data = JSON.parse(ev.target.result);
-                            document.getElementById(geoFiles[key].elId).innerText = "✅";
-                            checkReady();
-                        } catch(err) { alert("JSONファイルの解析に失敗しました。"); }
-                    };
-                    reader.readAsText(file);
-                    
-                    // 同じファイルを連続で選べるようにリセット
-                    e.target.value = '';
-                });
+            return {
+                id: Math.random(), startTime: time, endTime: time,
+                events: segments.map(s => ({time: time, seg: s})),
+                uniqueSegments: [...segments], type: type, mag: m, interval: interval
             };
-            handleFile('input-file-map', 'map');
-            handleFile('input-file-trough', 'trough');
-            handleFile('input-file-plates', 'plates');
         }
 
-        // --- シミュレーション処理 ---
-        let historyData = [];
-        let simParams = { noiseMultiplier: 1.0, sseFrequency: 40 };
+        function processRuptureToTimeline(time, newlyRuptured) {
+            if (newlyRuptured.includes('tokai') && newlyRuptured.includes('nankai') && !newlyRuptured.includes('tonankai')) {
+                timelineClusters.push(createCluster(time, ['tokai']));
+                timelineClusters.push(createCluster(time, ['nankai']));
+            } else {
+                timelineClusters.push(createCluster(time, newlyRuptured));
+            }
+        }
 
-        function generateSimulationData() {
-            historyData = [];
-            let globalSlipDeficit = 0;
-            let currentDisplacements = stationsGeo.map(() => 0);
-            
-            let rawSeries = stationsGeo.map(() => []);
+        function initSimulation() {
+            historyData = []; currentTime = 0; chartPanOffset = 0; tlPanOffset = 0;
+            activeShockwaves = []; timelineClusters = [];
+            simulationState = { segments: { nankai: { deficit: 400, threshold: generateThreshold() }, tonankai: { deficit: 500, threshold: generateThreshold() }, tokai: { deficit: 750, threshold: generateThreshold() } } };
+            computeNextStep();
+        }
 
-            for (let t = 0; t <= MAX_TIME; t++) {
-                let state = { time: t, isSseActive: false, isMegaQuake: false, globalSlipDeficit: 0, stations: [] };
-                
-                globalSlipDeficit += 0.1;
-                if (Math.sin(t / simParams.sseFrequency) > 0.85) { 
-                    state.isSseActive = true; globalSlipDeficit -= 0.15; 
+        function computeNextStep() {
+            let scale = simParams.timeUnit === 'month' ? 1/12 : (simParams.timeUnit === 'day' ? 1/365.25 : 1.0);
+            let state = { time: currentTime, ruptures: [], sseEvents: [], segmentsInfo: {}, stations: [] };
+            let segs = simulationState.segments;
+
+            if (currentTime > 0) {
+                let subduction = (5.0 + (Math.random() * 3.0 - 1.5)) * scale;
+                segs.nankai.deficit += subduction; segs.tonankai.deficit += subduction; segs.tokai.deficit += subduction;
+
+                let adjustedSseProb = simParams.sseProbability * scale * 2.0; 
+                for (const [segKey, segData] of Object.entries(segs)) {
+                    if (Math.random() < adjustedSseProb) {
+                        state.sseEvents.push(segKey);
+                        segData.deficit = Math.max(0, segData.deficit - (15 + Math.random() * 30));
+                    }
                 }
-                if (globalSlipDeficit > 50) {
-                    state.isMegaQuake = true; globalSlipDeficit = 0; 
+
+                let newlyRuptured = [];
+                for (const [segKey, segData] of Object.entries(segs)) {
+                    if (segData.deficit >= segData.threshold) newlyRuptured.push(segKey);
                 }
-                if (globalSlipDeficit < 0) globalSlipDeficit = 0;
-                
-                state.globalSlipDeficit = globalSlipDeficit;
 
-                stationsGeo.forEach((station, i) => {
-                    let velocity = -0.06; 
-                    if (state.isSseActive) velocity = 0.02; 
-                    currentDisplacements[i] += velocity;
-                    if (state.isMegaQuake) currentDisplacements[i] += 25; 
+                if (newlyRuptured.length > 0) {
+                    const DANGER_THRESHOLD = 700; let added = true; const checkedPaths = new Set();
+                    while (added) {
+                        added = false;
+                        if (newlyRuptured.includes('tonankai')) {
+                            if (!newlyRuptured.includes('nankai') && segs.nankai.deficit > DANGER_THRESHOLD && !checkedPaths.has('tonankai_to_nankai')) { checkedPaths.add('tonankai_to_nankai'); if (Math.random() < 0.5) { newlyRuptured.push('nankai'); added = true; } }
+                            if (!newlyRuptured.includes('tokai') && segs.tokai.deficit > DANGER_THRESHOLD && !checkedPaths.has('tonankai_to_tokai')) { checkedPaths.add('tonankai_to_tokai'); if (Math.random() < 0.5) { newlyRuptured.push('tokai'); added = true; } }
+                        }
+                        if (newlyRuptured.includes('nankai') && !newlyRuptured.includes('tonankai') && segs.tonankai.deficit > DANGER_THRESHOLD && !checkedPaths.has('nankai_to_tonankai')) { checkedPaths.add('nankai_to_tonankai'); if (Math.random() < 0.5) { newlyRuptured.push('tonankai'); added = true; } }
+                        if (newlyRuptured.includes('tokai') && !newlyRuptured.includes('tonankai') && segs.tonankai.deficit > DANGER_THRESHOLD && !checkedPaths.has('tokai_to_tonankai')) { checkedPaths.add('tokai_to_tonankai'); if (Math.random() < 0.5) { newlyRuptured.push('tonankai'); added = true; } }
+                    }
+                    state.ruptures = [...newlyRuptured];
+                    processRuptureToTimeline(currentTime, newlyRuptured);
 
-                    let noise = (Math.random() - 0.5) * simParams.noiseMultiplier;
-                    let val = currentDisplacements[i] + noise;
-                    
-                    rawSeries[i].push(val);
-                    
-                    let anomalyScore = state.isSseActive ? 0.8 + Math.random()*0.2 : 0.2 + Math.random()*0.2;
-                    if(state.isMegaQuake) anomalyScore = 1.0;
-
-                    state.stations.push({ id: station.id, value: val, anomaly: anomalyScore, filteredValue: 0 });
-                });
-                historyData.push(state);
+                    newlyRuptured.forEach(key => { segs[key].deficit = 0; segs[key].threshold = generateThreshold(); activeShockwaves.push({ lon: segmentCenters[key][0], lat: segmentCenters[key][1], radius: 10, alpha: 1.0 }); });
+                    for (const segKey of Object.keys(segs)) { if (!newlyRuptured.includes(segKey)) segs[segKey].deficit += 50; }
+                }
             }
 
-            const windowSize = 10;
-            stationsGeo.forEach((station, i) => {
-                for (let t = 0; t <= MAX_TIME; t++) {
-                    let sum = 0, count = 0;
-                    for (let j = Math.max(0, t - windowSize + 1); j <= t; j++) {
-                        sum += rawSeries[i][j];
-                        count++;
-                    }
-                    historyData[t].stations[i].filteredValue = sum / count;
-                }
+            stationsGeo.forEach((station) => {
+                let idealDisp = station.baseDisp + (segs[station.segment].deficit * station.factor);
+                let noise = (Math.random() - 0.5) * 2.0 * simParams.noiseLevel; 
+                state.stations.push({ id: station.id, value: idealDisp + noise, segment: station.segment });
             });
+
+            state.segmentsInfo = JSON.parse(JSON.stringify(segs));
+            historyData.push(state);
         }
 
-        // --- 描画処理 ---
-        let bgCanvas, troughCanvas, fgCanvas;
+        function generateThreshold() { return 800 + Math.random() * 300; }
+
+        let bgCanvas, troughCanvas, fgCanvas, zoomOverlay;
         let bgCtx, troughCtx, fgCtx, projection;
-        let mapPath2D = null, troughPath2D = null, platePath2D = null;
-        let currentTransform = d3.zoomIdentity;
-        let lastDrawnTransform = d3.zoomIdentity;
-        
-        function updatePaths() {
-            if (!projection) return;
-            const pathGen = d3.geoPath().projection(projection);
-            if (geoFiles.map.data) mapPath2D = new Path2D(pathGen(geoFiles.map.data));
-            if (geoFiles.trough.data) troughPath2D = new Path2D(pathGen(geoFiles.trough.data));
-            if (geoFiles.plates.data) platePath2D = new Path2D(pathGen(geoFiles.plates.data));
+        let mapPath2D = null, platePath2D = null, troughPaths2D = { tokai: null, tonankai: null, nankai: null };
+        let currentTransform = d3.zoomIdentity, lastDrawnTransform = d3.zoomIdentity; 
+        let tlCanvas, tlCtx;
+
+        function updatePaths() { 
+            if (!projection) return; const pathGen = d3.geoPath().projection(projection); 
+            if (geoFiles.map.data) mapPath2D = new Path2D(pathGen(geoFiles.map.data)); 
+            if (geoFiles.plates.data) platePath2D = new Path2D(pathGen(geoFiles.plates.data)); 
+            if (geoFiles.trough.data && geoFiles.trough.data.features) {
+                let pathsStr = { tokai: "", tonankai: "", nankai: "" };
+                geoFiles.trough.data.features.forEach(feature => {
+                    let bounds = d3.geoBounds(feature); let centerLon = (bounds[0][0] + bounds[1][0]) / 2; let p = pathGen(feature);
+                    if (p) { if (centerLon > 137.2) pathsStr.tokai += p; else if (centerLon > 135.0) pathsStr.tonankai += p; else pathsStr.nankai += p; }
+                });
+                troughPaths2D.tokai = pathsStr.tokai ? new Path2D(pathsStr.tokai) : null;
+                troughPaths2D.tonankai = pathsStr.tonankai ? new Path2D(pathsStr.tonankai) : null;
+                troughPaths2D.nankai = pathsStr.nankai ? new Path2D(pathsStr.nankai) : null;
+            }
         }
+        
+        function resizeCanvasLayer(canvas, ctx, cw, ch, dpr) { canvas.width = cw * dpr; canvas.height = ch * dpr; canvas.style.width = `${cw}px`; canvas.style.height = `${ch}px`; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr); }
+        function resizeAllCanvas() { 
+            const dpr = window.devicePixelRatio || 1;
+            const container = document.getElementById('map-container'); const cw = container.clientWidth, ch = container.clientHeight; 
+            resizeCanvasLayer(bgCanvas, bgCtx, cw, ch, dpr); resizeCanvasLayer(troughCanvas, troughCtx, cw, ch, dpr); resizeCanvasLayer(fgCanvas, fgCtx, cw, ch, dpr); 
+            projection = d3.geoMercator().center([137.0, 34.5]).scale(3000).translate([cw / 2, ch / 2]); 
+            updatePaths(); renderStaticMaps(); 
 
+            const tlWrapper = document.getElementById('timeline-wrapper');
+            resizeCanvasLayer(tlCanvas, tlCtx, tlWrapper.clientWidth, tlWrapper.clientHeight, dpr);
+            if(isBootstrapped) updateCharts();
+        }
+        
         function initCanvasSystem() {
-            bgCanvas = document.getElementById('map-bg');
-            troughCanvas = document.getElementById('map-trough');
-            fgCanvas = document.getElementById('map-fg');
-            
-            bgCtx = bgCanvas.getContext('2d');
-            troughCtx = troughCanvas.getContext('2d');
-            fgCtx = fgCanvas.getContext('2d');
-            
-            const container = document.getElementById('map-container');
-            const cw = container.clientWidth;
-            const ch = container.clientHeight;
-            
-            bgCanvas.width = troughCanvas.width = fgCanvas.width = cw;
-            bgCanvas.height = troughCanvas.height = fgCanvas.height = ch;
+            bgCanvas = document.getElementById('map-bg'); troughCanvas = document.getElementById('map-trough'); fgCanvas = document.getElementById('map-fg'); zoomOverlay = document.getElementById('zoom-overlay');
+            bgCtx = bgCanvas.getContext('2d'); troughCtx = troughCanvas.getContext('2d'); fgCtx = fgCanvas.getContext('2d');
+            tlCanvas = document.getElementById('timelineChart'); tlCtx = tlCanvas.getContext('2d');
+            resizeAllCanvas();
 
-            projection = d3.geoMercator()
-                .center([137.0, 36.0]) 
-                .scale(2000) 
-                .translate([cw / 2, ch / 2]);
-
-            updatePaths();
-
-            const zoom = d3.zoom().scaleExtent([0.5, 40])
-                .on("zoom", (event) => {
-                    currentTransform = event.transform;
-                    const s = currentTransform.k / lastDrawnTransform.k;
-                    const tx = currentTransform.x - lastDrawnTransform.x * s;
-                    const ty = currentTransform.y - lastDrawnTransform.y * s;
-                    
-                    const transformStr = `translate(${tx}px, ${ty}px) scale(${s})`;
-                    bgCanvas.style.transform = transformStr;
-                    troughCanvas.style.transform = transformStr;
-                    fgCanvas.style.transform = transformStr;
-                })
-                .on("end", () => {
-                    lastDrawnTransform = currentTransform;
-                    bgCanvas.style.transform = troughCanvas.style.transform = fgCanvas.style.transform = `translate(0px, 0px) scale(1)`;
-                    renderStaticMaps();
-                    updateDynamicElements();
-                });
-            
-            d3.select(fgCanvas).call(zoom);
-
-            d3.select(fgCanvas).on("click touchstart", (event) => {
-                let mx, my;
-                if (event.touches && event.touches.length > 0) {
-                    const rect = fgCanvas.getBoundingClientRect();
-                    mx = event.touches[0].clientX - rect.left;
-                    my = event.touches[0].clientY - rect.top;
-                } else {
-                    [mx, my] = d3.pointer(event);
-                }
-
-                let clickedStation = null;
-                let minDist = 25; 
-
-                stationsGeo.forEach(station => {
-                    const [px, py] = projection([station.lon, station.lat]);
-                    const screenX = px * currentTransform.k + currentTransform.x;
-                    const screenY = py * currentTransform.k + currentTransform.y;
-                    const dist = Math.sqrt(Math.pow(mx - screenX, 2) + Math.pow(my - screenY, 2));
-                    if (dist < minDist) { minDist = dist; clickedStation = station; }
-                });
-
-                if (clickedStation) {
-                    const idx = selectedStationIds.indexOf(clickedStation.id);
-                    if (idx > -1) {
-                        if (selectedStationIds.length > 1) selectedStationIds.splice(idx, 1);
-                    } else {
-                        selectedStationIds.push(clickedStation.id);
-                        if(selectedStationIds.length > 3) selectedStationIds.shift();
-                    }
-                    updateCharts();
-                    updateDynamicElements();
-                }
+            const zoom = d3.zoom().scaleExtent([0.5, 40]).on("zoom", (event) => { currentTransform = event.transform; const s = currentTransform.k / lastDrawnTransform.k; const tx = currentTransform.x - lastDrawnTransform.x * s, ty = currentTransform.y - lastDrawnTransform.y * s; bgCanvas.style.transform = troughCanvas.style.transform = fgCanvas.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`; }).on("end", () => { lastDrawnTransform = currentTransform; bgCanvas.style.transform = troughCanvas.style.transform = fgCanvas.style.transform = `translate(0px, 0px) scale(1)`; renderStaticMaps(); });
+            d3.select(zoomOverlay).call(zoom);
+            d3.select(zoomOverlay).on("click touchstart", (event) => {
+                let mx, my; if (event.touches && event.touches.length > 0) { const rect = zoomOverlay.getBoundingClientRect(); mx = event.touches[0].clientX - rect.left; my = event.touches[0].clientY - rect.top; } else { [mx, my] = d3.pointer(event); }
+                let clickedStation = null, minDist = 25; 
+                stationsGeo.forEach(station => { const [px, py] = projection([station.lon, station.lat]); const screenX = px * currentTransform.k + currentTransform.x, screenY = py * currentTransform.k + currentTransform.y; const dist = Math.sqrt(Math.pow(mx - screenX, 2) + Math.pow(my - screenY, 2)); if (dist < minDist) { minDist = dist; clickedStation = station; } });
+                if (clickedStation) { const idx = selectedStationIds.indexOf(clickedStation.id); if (idx > -1) { if (selectedStationIds.length > 1) selectedStationIds.splice(idx, 1); } else { selectedStationIds.push(clickedStation.id); if(selectedStationIds.length > 3) selectedStationIds.shift(); } updateCharts(); }
             });
         }
 
         function renderStaticMaps() {
-            if (!bgCtx || !mapPath2D) return;
-            
-            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-            bgCtx.save();
-            bgCtx.translate(lastDrawnTransform.x, lastDrawnTransform.y);
-            bgCtx.scale(lastDrawnTransform.k, lastDrawnTransform.k);
-
-            bgCtx.fillStyle = "#1C1C1E"; 
-            bgCtx.fill(mapPath2D);
-            bgCtx.lineWidth = 0.5 / lastDrawnTransform.k;
-            bgCtx.strokeStyle = "#3A3A3C";
-            bgCtx.stroke(mapPath2D);
-
-            if (platePath2D) {
-                bgCtx.lineWidth = 1.2 / lastDrawnTransform.k;
-                bgCtx.strokeStyle = "rgba(255, 159, 10, 0.7)";
-                bgCtx.setLineDash([6 / lastDrawnTransform.k, 4 / lastDrawnTransform.k]);
-                bgCtx.stroke(platePath2D);
-                bgCtx.setLineDash([]);
-            }
+            if (!bgCtx || !mapPath2D) return; const cw = bgCanvas.clientWidth, ch = bgCanvas.clientHeight;
+            bgCtx.clearRect(0, 0, cw, ch); bgCtx.save(); bgCtx.translate(lastDrawnTransform.x, lastDrawnTransform.y); bgCtx.scale(lastDrawnTransform.k, lastDrawnTransform.k); 
+            bgCtx.fillStyle = "#1C1C1E"; bgCtx.fill(mapPath2D); bgCtx.lineWidth = 0.5 / lastDrawnTransform.k; bgCtx.strokeStyle = "#3A3A3C"; bgCtx.stroke(mapPath2D);
+            if (platePath2D) { bgCtx.lineWidth = 1.2 / lastDrawnTransform.k; bgCtx.strokeStyle = "rgba(255, 159, 10, 0.7)"; bgCtx.setLineDash([6 / lastDrawnTransform.k, 4 / lastDrawnTransform.k]); bgCtx.stroke(platePath2D); bgCtx.setLineDash([]); } 
+            bgCtx.lineWidth = 1.0 / lastDrawnTransform.k; bgCtx.strokeStyle = "rgba(255, 69, 58, 0.3)"; 
+            ['nankai', 'tonankai', 'tokai'].forEach(key => { if (troughPaths2D[key]) bgCtx.stroke(troughPaths2D[key]); });
             bgCtx.restore();
-
-            troughCtx.clearRect(0, 0, troughCanvas.width, troughCanvas.height);
-            if (troughPath2D) {
-                troughCtx.save();
-                troughCtx.translate(lastDrawnTransform.x, lastDrawnTransform.y);
-                troughCtx.scale(lastDrawnTransform.k, lastDrawnTransform.k);
-                
-                troughCtx.fillStyle = "rgba(255, 69, 58, 1.0)"; 
-                troughCtx.fill(troughPath2D);
-                troughCtx.lineWidth = 1.0 / lastDrawnTransform.k;
-                troughCtx.strokeStyle = "rgba(255, 69, 58, 0.5)";
-                troughCtx.stroke(troughPath2D);
-                troughCtx.restore();
-            }
         }
 
-        function updateDynamicElements() {
-            if (!fgCtx) return;
-            const state = historyData.length > 0 ? historyData[currentTime] : null;
+        function startAnimationLoop() { function loop() { updateDynamicElements(); requestAnimationFrame(loop); } requestAnimationFrame(loop); }
 
-            if (troughCanvas && state) {
-                let heatOpacity = 0.05 + (state.globalSlipDeficit / 50) * 0.5; 
-                if (state.isMegaQuake) heatOpacity = 0.9;
-                troughCanvas.style.opacity = heatOpacity;
+        function updateDynamicElements() {
+            if (!fgCtx || !troughCtx || historyData.length === 0) return; const state = historyData[currentTime];
+            const cwT = troughCanvas.clientWidth, chT = troughCanvas.clientHeight; troughCtx.clearRect(0, 0, cwT, chT);
+            
+            if (state) {
+                troughCtx.save(); troughCtx.translate(lastDrawnTransform.x, lastDrawnTransform.y); troughCtx.scale(lastDrawnTransform.k, lastDrawnTransform.k);
+                ['nankai', 'tonankai', 'tokai'].forEach(key => {
+                    if (troughPaths2D[key]) {
+                        let deficitRatio = state.segmentsInfo[key].deficit / state.segmentsInfo[key].threshold;
+                        let heatOpacity = 0.05 + Math.pow(deficitRatio, 3) * 0.7; if (state.ruptures.includes(key)) heatOpacity = 0.9;
+                        troughCtx.fillStyle = `rgba(255, 69, 58, ${heatOpacity})`; troughCtx.fill(troughPaths2D[key]);
+                    }
+                });
+                troughCtx.restore();
             }
 
-            fgCtx.clearRect(0, 0, fgCanvas.width, fgCanvas.height);
+            const cw = fgCanvas.clientWidth, ch = fgCanvas.clientHeight; fgCtx.clearRect(0, 0, cw, ch);
+            for (let i = activeShockwaves.length - 1; i >= 0; i--) {
+                let sw = activeShockwaves[i]; const [px, py] = projection([sw.lon, sw.lat]); const sx = px * lastDrawnTransform.k + lastDrawnTransform.x, sy = py * lastDrawnTransform.k + lastDrawnTransform.y;
+                let grad = fgCtx.createRadialGradient(sx, sy, 0, sx, sy, sw.radius * lastDrawnTransform.k); grad.addColorStop(0, `rgba(255, 69, 58, ${sw.alpha * 0.8})`); grad.addColorStop(1, `rgba(255, 69, 58, 0)`);
+                fgCtx.beginPath(); fgCtx.arc(sx, sy, sw.radius * lastDrawnTransform.k, 0, Math.PI * 2); fgCtx.fillStyle = grad; fgCtx.fill();
+                sw.radius += 2.0; sw.alpha -= 0.012; if (sw.alpha <= 0) activeShockwaves.splice(i, 1);
+            }
 
             stationsGeo.forEach(station => {
-                const [px, py] = projection([station.lon, station.lat]);
-                const screenX = px * currentTransform.k + currentTransform.x;
-                const screenY = py * currentTransform.k + currentTransform.y;
-
-                let isAlert = false;
-                if (state) {
-                    const stData = state.stations.find(s => s.id === station.id);
-                    if (stData && stData.anomaly > 0.6) isAlert = true;
-                }
-
-                const isSelected = selectedStationIds.includes(station.id);
-                const colorIdx = selectedStationIds.indexOf(station.id);
-                const stationColor = isSelected ? stationColors[colorIdx % stationColors.length] : "#8E8E93";
-
-                if(isSelected) {
-                    fgCtx.beginPath();
-                    fgCtx.arc(screenX, screenY, 22, 0, 2 * Math.PI);
-                    fgCtx.fillStyle = `${stationColor}33`; 
-                    fgCtx.fill();
-                }
-
-                fgCtx.beginPath();
-                fgCtx.arc(screenX, screenY, isSelected ? 6 : 4, 0, 2 * Math.PI);
-                fgCtx.fillStyle = isAlert ? "#FF453A" : stationColor;
-                fgCtx.fill();
-                
-                fgCtx.lineWidth = 1.5;
-                fgCtx.strokeStyle = "#000000";
-                fgCtx.stroke();
-                
-                if(isSelected) {
-                    fgCtx.font = "600 12px -apple-system, sans-serif";
-                    fgCtx.fillStyle = "#FFFFFF";
-                    fgCtx.fillText(station.name, screenX + 14, screenY - 8);
-                }
+                const [px, py] = projection([station.lon, station.lat]); const screenX = px * lastDrawnTransform.k + lastDrawnTransform.x, screenY = py * lastDrawnTransform.k + lastDrawnTransform.y;
+                let isRuptured = state && state.ruptures.includes(station.segment); const isSelected = selectedStationIds.includes(station.id); const colorIdx = selectedStationIds.indexOf(station.id); const stationColor = isSelected ? stationColors[colorIdx % stationColors.length] : "#8E8E93";
+                if(isSelected) { fgCtx.beginPath(); fgCtx.arc(screenX, screenY, 22, 0, 2 * Math.PI); fgCtx.fillStyle = `${stationColor}33`; fgCtx.fill(); }
+                fgCtx.beginPath(); fgCtx.arc(screenX, screenY, isSelected ? 6 : 4, 0, 2 * Math.PI); fgCtx.fillStyle = isRuptured ? "#FF453A" : stationColor; fgCtx.fill(); fgCtx.lineWidth = 1.5; fgCtx.strokeStyle = "#000000"; fgCtx.stroke();
+                if(isSelected) { fgCtx.font = "600 12px -apple-system, sans-serif"; fgCtx.fillStyle = "#FFFFFF"; fgCtx.fillText(station.name, screenX + 14, screenY - 8); }
             });
         }
 
-        let timeSeriesChart, depthProfileChart;
-
+        let timeSeriesChart, deficitChart;
         function initCharts() {
-            Chart.defaults.color = 'rgba(235, 235, 245, 0.6)';
-            Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)'; 
-            Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
-
+            Chart.defaults.color = 'rgba(235, 235, 245, 0.6)'; Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)'; Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, sans-serif';
             const ctx1 = document.getElementById('timeSeriesChart').getContext('2d');
-            timeSeriesChart = new Chart(ctx1, {
-                type: 'line',
+            timeSeriesChart = new Chart(ctx1, { 
+                type: 'line', 
                 data: { labels: [], datasets: [] }, 
                 options: { 
                     responsive: true, maintainAspectRatio: false, animation: false, 
-                    plugins: { legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, color: '#FFF' } } },
-                    scales: { x: { display: false }, y: { position: 'right', border: { display: false }, grid: { color: 'rgba(255, 255, 255, 0.05)' } } } 
-                }
+                    plugins: { legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, color: '#FFF' } } }, 
+                    scales: { x: { display: true, ticks: { maxTicksLimit: 5, callback: val => `+${val}` } }, y: { position: 'right', border: { display: false } } } 
+                } 
+            });
+            const ctx2 = document.getElementById('deficitChart').getContext('2d');
+            deficitChart = new Chart(ctx2, { type: 'bar', data: { labels: ['Tokai', 'Tonankai', 'Nankai'], datasets: [{ label: 'Slip Deficit', data: [0, 0, 0], backgroundColor: ['#FF9F0A', '#32D74B', '#0A84FF'], borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { position: 'right', min: 0, max: 1200, border: { display: false } } } } });
+        }
+
+        function toggleFullscreen(btn) {
+            const mapContainer = document.getElementById('map-container');
+            if (mapContainer.classList.contains('fullscreen-target')) {
+                mapContainer.classList.remove('fullscreen-target');
+                document.getElementById('map-expand-btn').innerHTML = '⛶';
+                setTimeout(() => resizeAllCanvas(), 50);
+            }
+
+            const box = btn.closest('.chart-box');
+            const isFullscreen = box.classList.contains('fullscreen-target');
+            
+            document.querySelectorAll('.chart-box.fullscreen-target').forEach(el => {
+                if (el !== box) { el.classList.remove('fullscreen-target'); el.querySelector('.expand-btn').innerHTML = '⛶'; }
             });
 
-            const ctx2 = document.getElementById('depthProfileChart').getContext('2d');
-            depthProfileChart = new Chart(ctx2, {
-                type: 'line',
-                data: {
-                    labels: ['0km', '10km', '20km', '30km', '40km'],
-                    datasets: [{ 
-                        label: 'Slip Deficit', data: [0, 0, 0, 0, 0], borderColor: '#FF453A', backgroundColor: 'rgba(255, 69, 58, 0.2)', borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0
-                    }]
-                },
-                options: { 
-                    responsive: true, maintainAspectRatio: false, animation: false, 
-                    plugins: { legend: { display: false } },
-                    scales: { x: { grid: { display: false } }, y: { position: 'right', min: 0, max: 100, border: { display: false } } } 
+            if (isFullscreen) {
+                box.classList.remove('fullscreen-target'); btn.innerHTML = '⛶';
+            } else {
+                box.classList.add('fullscreen-target'); btn.innerHTML = '✖';
+            }
+
+            setTimeout(() => {
+                if (timeSeriesChart) timeSeriesChart.resize();
+                if (deficitChart) deficitChart.resize();
+                const tlWrapper = document.getElementById('timeline-wrapper');
+                if (tlWrapper && tlCanvas && isBootstrapped) {
+                    const dpr = window.devicePixelRatio || 1;
+                    resizeCanvasLayer(tlCanvas, tlCtx, tlWrapper.clientWidth, tlWrapper.clientHeight, dpr);
+                    drawTimeline();
                 }
+            }, 50);
+        }
+
+        document.getElementById('map-expand-btn').addEventListener('click', function() {
+            const container = document.getElementById('map-container');
+            const isFullscreen = container.classList.contains('fullscreen-target');
+            
+            document.querySelectorAll('.chart-box.fullscreen-target').forEach(el => {
+                el.classList.remove('fullscreen-target'); el.querySelector('.expand-btn').innerHTML = '⛶';
+            });
+            if (timeSeriesChart) timeSeriesChart.resize();
+            if (deficitChart) deficitChart.resize();
+
+            if (isFullscreen) {
+                container.classList.remove('fullscreen-target');
+                this.innerHTML = '⛶';
+            } else {
+                container.classList.add('fullscreen-target');
+                this.innerHTML = '✖';
+            }
+            setTimeout(() => { resizeAllCanvas(); }, 50);
+        });
+
+        // ▼ 修正：let変数の参照エラーを回避するため、ゲッター/セッターを使用。
+        // また、requestAnimationFrame を使って再描画の頻度を最適化（処理落ち防止）
+        function setupPan(wrapperId, btnId, getOffset, setOffset, maxWindow) {
+            const wrapper = document.getElementById(wrapperId); 
+            const btn = document.getElementById(btnId); 
+            let startX = null, startOffset = 0;
+            let isDrawing = false; // 描画中かどうかのフラグ
+
+            wrapper.addEventListener('pointerdown', (e) => { 
+                startX = e.clientX; 
+                startOffset = getOffset(); 
+                wrapper.setPointerCapture(e.pointerId); 
+            });
+
+            wrapper.addEventListener('pointermove', (e) => { 
+                if (startX !== null) { 
+                    let delta = (e.clientX - startX) * (maxWindow / wrapper.clientWidth) * 1.5; 
+                    let newOffset = Math.max(0, Math.min(currentTime, startOffset + delta)); 
+                    setOffset(newOffset);
+                    btn.style.display = newOffset > 0 ? 'block' : 'none'; 
+                    
+                    // 処理落ち防止: 次の画面更新のタイミングで1回だけ再描画する
+                    if (!isDrawing) {
+                        isDrawing = true;
+                        requestAnimationFrame(() => {
+                            updateCharts();
+                            isDrawing = false;
+                        });
+                    }
+                } 
+            });
+
+            wrapper.addEventListener('pointerup', () => { startX = null; }); 
+            wrapper.addEventListener('pointercancel', () => { startX = null; });
+            
+            wrapper.addEventListener('wheel', (e) => { 
+                if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) { 
+                    e.preventDefault(); 
+                    let currentOffset = getOffset();
+                    let newOffset = Math.max(0, Math.min(currentTime, currentOffset + e.deltaX * (maxWindow / wrapper.clientWidth) * 0.5)); 
+                    setOffset(newOffset);
+                    btn.style.display = newOffset > 0 ? 'block' : 'none'; 
+                    if (!isDrawing) {
+                        isDrawing = true;
+                        requestAnimationFrame(() => { updateCharts(); isDrawing = false; });
+                    }
+                } 
+            }, { passive: false });
+
+            btn.addEventListener('click', () => { 
+                setOffset(0); 
+                btn.style.display = 'none'; 
+                updateCharts(); 
             });
         }
 
+        // ▼ 修正：window[] ではなく、関数経由で変数を直接読み書きする
+        setupPan('time-series-wrapper', 'reset-pan-btn', () => chartPanOffset, (val) => { chartPanOffset = val; }, CHART_WINDOW);
+        setupPan('timeline-wrapper', 'reset-tl-btn', () => tlPanOffset, (val) => { tlPanOffset = val; }, TIMELINE_WINDOW);
+
         function updateUI() {
-            if (historyData.length === 0) return;
-            const state = historyData[currentTime];
-            
-            document.getElementById('time-display').innerText = `T+ ${String(currentTime).padStart(4, '0')}`;
-            document.getElementById('timeline').value = currentTime;
-
+            if (historyData.length === 0) return; const state = historyData[currentTime];
+            document.getElementById('time-display').innerText = `${simParams.timeUnit.charAt(0).toUpperCase() + simParams.timeUnit.slice(1)} +${currentTime}`; 
             const statusEl = document.getElementById('alert-status');
-            if (state.isMegaQuake) {
-                statusEl.innerText = "Critical Event"; statusEl.className = "status-quake";
-            } else if (state.isSseActive) {
-                statusEl.innerText = "SSE Detected"; statusEl.className = "status-sse";
-            } else {
-                statusEl.innerText = "Normal"; statusEl.className = "status-normal";
+            if (state.ruptures.length > 0) { statusEl.innerText = `RUPTURE: ${state.ruptures.map(r => r.toUpperCase()).join(" & ")}`; statusEl.className = "status-quake"; } 
+            else if (state.sseEvents.length > 0) { statusEl.innerText = `Slow Slip Detected`; statusEl.className = "status-normal"; statusEl.style.color = "#BF5AF2"; statusEl.style.background = "rgba(191, 90, 242, 0.2)"; } 
+            else {
+                let isWarn = false; for(const key in state.segmentsInfo) { if (state.segmentsInfo[key].deficit > 700) isWarn = true; }
+                if(isWarn) { statusEl.innerText = "Critical Strain"; statusEl.className = "status-warn"; statusEl.style.color = ""; statusEl.style.background = "";}
+                else { statusEl.innerText = "System Normal"; statusEl.className = "status-normal"; statusEl.style.color = ""; statusEl.style.background = "";}
             }
-
-            updateDynamicElements();
             updateCharts();
         }
 
         function updateCharts() {
-            const displayLimit = 80;
-            const startIdx = Math.max(0, currentTime - displayLimit + 1);
-            
-            const slicedHistory = historyData.slice(startIdx, currentTime + 1);
-            
-            timeSeriesChart.data.labels = slicedHistory.map(d => d.time);
-            
+            let maxAllowedEnd = Math.max(CHART_WINDOW, currentTime); let endX = Math.max(CHART_WINDOW, Math.min(maxAllowedEnd, maxAllowedEnd - Math.floor(chartPanOffset)));
+            let startX = endX - CHART_WINDOW; let newLabels = []; for (let i = startX; i <= endX; i++) newLabels.push(i);
+            timeSeriesChart.data.labels = newLabels;
+
             const newDatasets = [];
             selectedStationIds.forEach((id, index) => {
-                const stationName = stationsGeo.find(s => s.id === id).name;
-                const color = stationColors[index % stationColors.length];
+                const station = stationsGeo.find(s => s.id === id);
+                if (!station) return;
                 
-                const preFilteredData = slicedHistory.map(d => d.stations.find(s => s.id === id).filteredValue);
+                const stationData = []; for(let i = startX; i <= endX; i++) { stationData.push((i <= currentTime && historyData[i]) ? historyData[i].stations.find(s => s.id === id).value : null); }
+                
+                newDatasets.push({ 
+                    label: station.name,
+                    data: stationData, 
+                    borderColor: stationColors[index % stationColors.length], 
+                    borderWidth: 1.5, 
+                    tension: 0, 
+                    pointRadius: 0,
+                    segment: {
+                        borderColor: ctx => {
+                            if (ctx.p1DataIndex === undefined) return undefined;
+                            const timeVal = timeSeriesChart.data.labels[ctx.p1DataIndex];
+                            const state = historyData[timeVal];
+                            if (!state || !state.ruptures) return undefined;
+                            
+                            if (state.ruptures.includes(station.segment)) return '#FF453A';
+                            if (state.sseEvents.includes(station.segment)) return '#BF5AF2';
+                            return undefined;
+                        },
+                        borderWidth: ctx => {
+                            if (ctx.p1DataIndex === undefined) return undefined;
+                            const timeVal = timeSeriesChart.data.labels[ctx.p1DataIndex];
+                            const state = historyData[timeVal];
+                            if (!state || !state.ruptures) return undefined;
 
-                newDatasets.push({
-                    label: stationName, data: preFilteredData, borderColor: color, borderWidth: 2, tension: 0.4, pointRadius: 0
-                });
+                            if (state.ruptures.includes(station.segment) || state.sseEvents.includes(station.segment)) return 3;
+                            return undefined;
+                        }
+                    }
+                }); 
             });
-
-            timeSeriesChart.data.datasets = newDatasets;
-            timeSeriesChart.update();
+            timeSeriesChart.data.datasets = newDatasets; timeSeriesChart.update();
 
             const state = historyData[currentTime];
-            const deficit = state.globalSlipDeficit;
-            depthProfileChart.data.datasets[0].data = [0, deficit * 0.4, deficit, deficit * 0.6, 0];
-            depthProfileChart.update();
-        }
-
-        function togglePlay() {
-            isPlaying = !isPlaying;
-            document.getElementById('play-pause-btn').innerText = isPlaying ? "Pause" : "Play";
-            
-            if (isPlaying) {
-                playInterval = setInterval(() => {
-                    if (currentTime < MAX_TIME) { currentTime++; updateUI(); } 
-                    else { togglePlay(); }
-                }, 50); 
-            } else {
-                clearInterval(playInterval);
+            if(state && state.segmentsInfo) {
+                deficitChart.data.datasets[0].data = [ state.segmentsInfo.tokai.deficit, state.segmentsInfo.tonankai.deficit, state.segmentsInfo.nankai.deficit ];
+                deficitChart.data.datasets[0].backgroundColor = [ state.segmentsInfo.tokai.deficit > 700 ? '#FF453A' : '#FF9F0A', state.segmentsInfo.tonankai.deficit > 700 ? '#FF453A' : '#32D74B', state.segmentsInfo.nankai.deficit > 700 ? '#FF453A' : '#0A84FF' ];
+                deficitChart.update();
             }
+            drawTimeline();
         }
 
+        function drawTimeline() {
+            if (!tlCtx) return; const w = tlCanvas.clientWidth; const h = tlCanvas.clientHeight; tlCtx.clearRect(0, 0, w, h);
+
+            let maxViewT = Math.max(TIMELINE_WINDOW, currentTime);
+            let endT = Math.max(TIMELINE_WINDOW, Math.min(maxViewT, maxViewT - Math.floor(tlPanOffset)));
+            let startT = endT - TIMELINE_WINDOW;
+
+            tlCtx.lineWidth = 1; tlCtx.strokeStyle = "rgba(255, 255, 255, 0.1)"; tlCtx.fillStyle = "rgba(255, 255, 255, 0.4)"; tlCtx.font = "10px -apple-system, sans-serif"; tlCtx.textAlign = "left"; tlCtx.textBaseline = "middle";
+            for (const [key, yRatio] of Object.entries(lanesY)) { let y = h * yRatio; tlCtx.beginPath(); tlCtx.moveTo(0, y); tlCtx.lineTo(w, y); tlCtx.stroke(); tlCtx.fillText(key.toUpperCase(), 5, y - 10); }
+
+            const baseY = h * 0.88; tlCtx.strokeStyle = "rgba(255, 255, 255, 0.2)"; tlCtx.beginPath(); tlCtx.moveTo(0, baseY); tlCtx.lineTo(w, baseY); tlCtx.stroke();
+            let getX = (t) => ((t - startT) / TIMELINE_WINDOW) * w;
+
+            timelineClusters.forEach(cluster => {
+                if (cluster.endTime < startT - 50 || cluster.startTime > endT + 50) return;
+                
+                if (cluster.interval !== null) {
+                    let prevX = getX(cluster.startTime - cluster.interval); let currX = getX(cluster.startTime); let dx = currX - prevX;
+                    if (dx > 0) {
+                        tlCtx.strokeStyle = "rgba(255, 255, 255, 0.6)"; tlCtx.lineWidth = 1.5;
+                        tlCtx.beginPath(); tlCtx.moveTo(prevX, baseY); tlCtx.lineTo(currX, baseY); tlCtx.stroke();
+                        tlCtx.beginPath(); tlCtx.moveTo(prevX, baseY - 4); tlCtx.lineTo(prevX, baseY + 4); tlCtx.stroke();
+                        tlCtx.beginPath(); tlCtx.moveTo(currX, baseY - 4); tlCtx.lineTo(currX, baseY + 4); tlCtx.stroke();
+                        if (dx > 30) { tlCtx.fillStyle = "#FFFFFF"; tlCtx.textAlign = "center"; tlCtx.font = "11px -apple-system, sans-serif"; tlCtx.fillText(`${cluster.interval}y`, prevX + dx / 2, baseY + 12); }
+                    }
+                }
+
+                tlCtx.strokeStyle = "rgba(255, 255, 255, 0.4)"; tlCtx.lineWidth = 2;
+                if (cluster.events.length > 1) {
+                    tlCtx.beginPath();
+                    let firstEv = cluster.events[0]; let firstX = getX(firstEv.time); let firstY = h * lanesY[firstEv.seg];
+                    for (let i = 1; i < cluster.events.length; i++) {
+                        let ev = cluster.events[i];
+                        tlCtx.moveTo(firstX, firstY); tlCtx.lineTo(getX(ev.time), h * lanesY[ev.seg]);
+                    }
+                    tlCtx.stroke();
+                    tlCtx.beginPath(); tlCtx.moveTo(firstX, firstY); tlCtx.lineTo(firstX, baseY); tlCtx.stroke();
+                } else {
+                    let ev = cluster.events[0]; let ex = getX(ev.time); let ey = h * lanesY[ev.seg];
+                    tlCtx.strokeStyle = "rgba(255, 255, 255, 0.2)"; tlCtx.lineWidth = 1; tlCtx.setLineDash([3, 3]);
+                    tlCtx.beginPath(); tlCtx.moveTo(ex, ey); tlCtx.lineTo(ex, baseY); tlCtx.stroke(); tlCtx.setLineDash([]);
+                }
+
+                let radius = 4 + Math.pow(Math.max(0, cluster.mag - 7.5), 1.6) * 8; radius = Math.max(5, Math.min(30, radius)); 
+                let color = cluster.mag >= 8.8 ? '#FF453A' : (cluster.mag >= 8.2 ? '#FF9F0A' : '#FFD60A');
+
+                let minY = h, minX = w;
+                cluster.events.forEach(ev => {
+                    let x = getX(ev.time); let y = h * lanesY[ev.seg];
+                    if (y < minY) { minY = y; minX = x; } 
+                    tlCtx.beginPath(); tlCtx.arc(x, y, radius, 0, Math.PI * 2); tlCtx.fillStyle = laneColors[ev.seg]; tlCtx.fill();
+                    tlCtx.lineWidth = cluster.mag >= 8.8 ? 2 : 1.5; tlCtx.strokeStyle = color; tlCtx.stroke();
+                });
+
+                tlCtx.fillStyle = color; tlCtx.textAlign = "center"; tlCtx.font = "bold 11px -apple-system, sans-serif";
+                tlCtx.fillText(`M${cluster.mag.toFixed(1)}`, minX, minY - radius - 6);
+            });
+        }
+
+        function togglePlay() { isPlaying = !isPlaying; document.getElementById('play-pause-btn').innerText = isPlaying ? "Pause" : "Play"; if (isPlaying) { playInterval = setInterval(() => { currentTime++; computeNextStep(); updateUI(); }, simParams.playSpeedMs); } else { clearInterval(playInterval); } }
         document.getElementById('play-pause-btn').addEventListener('click', togglePlay);
-        document.getElementById('timeline').addEventListener('input', (e) => {
-            currentTime = parseInt(e.target.value);
-            if(isPlaying) togglePlay(); 
-            updateUI();
-        });
+        const filesOverlay = document.getElementById('files-overlay'); document.getElementById('home-files-btn').addEventListener('click', () => filesOverlay.style.display = 'flex'); document.getElementById('close-files-btn').addEventListener('click', () => filesOverlay.style.display = 'none');
+        const settingsOverlay = document.getElementById('settings-overlay'); document.getElementById('settings-btn').addEventListener('click', () => { if(isPlaying) togglePlay(); settingsOverlay.style.display = 'flex'; }); document.getElementById('close-settings-btn').addEventListener('click', () => settingsOverlay.style.display = 'none');
+        document.getElementById('param-noise').addEventListener('input', (e) => { document.getElementById('val-noise').innerText = e.target.value + " cm"; }); document.getElementById('param-sse').addEventListener('input', (e) => { document.getElementById('val-sse').innerText = e.target.value + "%"; }); document.getElementById('param-speed').addEventListener('input', (e) => { let val = parseInt(e.target.value); document.getElementById('val-speed').innerText = val === 100 ? "Normal" : (val < 100 ? "Fast" : "Slow"); });
 
-        // --- モーダル制御 ---
-        const filesOverlay = document.getElementById('files-overlay');
-        document.getElementById('home-files-btn').addEventListener('click', () => { filesOverlay.style.display = 'flex'; });
-        document.getElementById('close-files-btn').addEventListener('click', () => { filesOverlay.style.display = 'none'; });
+        document.getElementById('apply-settings-btn').addEventListener('click', () => { simParams.timeUnit = document.getElementById('param-time-unit').value; simParams.noiseLevel = parseFloat(document.getElementById('param-noise').value); simParams.sseProbability = parseInt(document.getElementById('param-sse').value) / 100; simParams.playSpeedMs = parseInt(document.getElementById('param-speed').value); settingsOverlay.style.display = 'none'; initSimulation(); updateUI(); });
 
-        const settingsOverlay = document.getElementById('settings-overlay');
-        document.getElementById('settings-btn').addEventListener('click', () => { settingsOverlay.style.display = 'flex'; });
-        document.getElementById('close-settings-btn').addEventListener('click', () => { settingsOverlay.style.display = 'none'; });
+        function startSimulation() { document.getElementById('play-pause-btn').disabled = false; updateUI(); }
+        async function bootstrap() { if (isBootstrapped) { startSimulation(); return; } initSimulation(); initCanvasSystem(); initCharts(); startAnimationLoop(); isBootstrapped = true; startSimulation(); }
+
+        document.getElementById('start-system-btn').addEventListener('click', () => { if (!geoFiles.map.data) return; const homeScreen = document.getElementById('home-screen'); homeScreen.style.opacity = '0'; setTimeout(() => { homeScreen.style.display = 'none'; document.getElementById('app-container').style.display = 'flex'; bootstrap(); }, 500); });
+        document.getElementById('back-btn').addEventListener('click', () => { if(isPlaying) togglePlay(); const appContainer = document.getElementById('app-container'); const homeScreen = document.getElementById('home-screen'); appContainer.style.display = 'none'; homeScreen.style.display = 'flex'; setTimeout(() => homeScreen.style.opacity = '1', 10); });
         
-        document.getElementById('param-noise').addEventListener('input', (e) => {
-            let val = parseFloat(e.target.value);
-            document.getElementById('noise-val').innerText = val === 0 ? "Off" : (val > 1 ? "High" : "Normal");
-        });
-        document.getElementById('param-sse').addEventListener('input', (e) => {
-            let val = parseInt(e.target.value);
-            document.getElementById('sse-val').innerText = val < 30 ? "High" : (val > 60 ? "Low" : "Normal");
-        });
-        document.getElementById('apply-settings-btn').addEventListener('click', () => {
-            simParams.noiseMultiplier = parseFloat(document.getElementById('param-noise').value);
-            simParams.sseFrequency = parseInt(document.getElementById('param-sse').value);
-            settingsOverlay.style.display = 'none';
-            generateSimulationData(); 
-            updateUI(); 
-        });
-
-        // --- 起動シーケンス ---
-        function startSimulation() {
-            document.getElementById('play-pause-btn').disabled = false;
-            document.getElementById('timeline').disabled = false;
-            currentTime = 0;
-            updateUI();
-        }
-
-        async function bootstrap() {
-            if (isBootstrapped) { startSimulation(); return; }
-            generateSimulationData(); 
-            initCanvasSystem();       
-            renderStaticMaps();       
-            initCharts();
-            isBootstrapped = true;
-            startSimulation();
-        }
-
-        document.getElementById('start-system-btn').addEventListener('click', () => {
-            if (!geoFiles.map.data) return;
-            const homeScreen = document.getElementById('home-screen');
-            homeScreen.style.opacity = '0';
-            setTimeout(() => {
-                homeScreen.style.display = 'none';
-                document.getElementById('app-container').style.display = 'flex';
-                window.dispatchEvent(new Event('resize'));
-                bootstrap();
-            }, 500); 
-        });
-
-        document.getElementById('back-btn').addEventListener('click', () => {
-            if(isPlaying) togglePlay(); 
-            const appContainer = document.getElementById('app-container');
-            const homeScreen = document.getElementById('home-screen');
-            appContainer.style.display = 'none';
-            homeScreen.style.display = 'flex';
-            setTimeout(() => homeScreen.style.opacity = '1', 10);
-        });
-
-        window.addEventListener('resize', () => {
-            if(bgCanvas && currentGeoData) {
-                const container = document.getElementById('map-container');
-                const cw = container.clientWidth;
-                const ch = container.clientHeight;
-                
-                bgCanvas.width = troughCanvas.width = fgCanvas.width = cw;
-                bgCanvas.height = troughCanvas.height = fgCanvas.height = ch;
-                
-                projection.translate([cw / 2, ch / 2]);
-                updatePaths();
-                lastDrawnTransform = currentTransform;
-                renderStaticMaps();
-                updateDynamicElements();
-            }
-        });
-
-        // ページロード時にファイル群を自動読み込み
-        window.onload = () => {
-            setupFileInputs();
-            autoLoadFiles();
-        };
+        window.addEventListener('resize', () => { if(isBootstrapped) resizeAllCanvas(); });
+        window.onload = () => { setupFileInputs(); autoLoadFiles(); };
     </script>
 </body>
 </html>
