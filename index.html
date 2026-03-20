@@ -44,17 +44,14 @@
         .home-title { font-size: 3rem; font-weight: 700; margin-bottom: 12px; text-align: center; }
         .home-subtitle { font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 40px; text-align: center;}
         
-        /* ファイル管理ボタン (右上) */
         #home-files-btn {
             position: absolute; top: max(24px, env(safe-area-inset-top)); right: max(24px, env(safe-area-inset-right));
             background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 0.5px solid rgba(255, 255, 255, 0.2);
             color: white; padding: 8px 16px; border-radius: 20px; display: flex; align-items: center; gap: 8px;
             cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;
-            animation: pulse-border 2s infinite; 
-            z-index: 10001; /* 確実に押せるように */
+            animation: pulse-border 2s infinite; z-index: 10001;
         }
         #home-files-btn:hover { background: rgba(255, 255, 255, 0.2); }
-        
         @keyframes pulse-border {
             0% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(10, 132, 255, 0); }
@@ -79,15 +76,17 @@
         #back-btn, #settings-btn { background: transparent; border: none; color: var(--system-blue); font-size: 1rem; cursor: pointer; padding: 0; }
         #header h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
         #alert-status { padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; transition: 0.3s; }
-        
         .status-normal { background: rgba(50, 215, 75, 0.15); color: var(--system-green); }
         .status-sse { background: rgba(255, 159, 10, 0.15); color: var(--system-orange); }
         .status-quake { background: var(--system-red); color: white; box-shadow: 0 0 15px rgba(255, 69, 58, 0.5); }
 
         #main { display: flex; flex: 1; gap: 16px; }
+        
         #map-container { flex: 1.2; position: relative; overflow: hidden; min-height: 350px; }
         .map-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
-        #map-fg { cursor: crosshair; z-index: 10; touch-action: none; }
+        #map-bg { z-index: 1; } 
+        #map-trough { z-index: 2; opacity: 0; transition: opacity 0.1s linear; } 
+        #map-fg { cursor: crosshair; z-index: 10; touch-action: none; } 
 
         #charts-container { flex: 1; display: flex; flex-direction: column; gap: 16px; max-width: 40%; }
         .chart-box { flex: 1; padding: 16px; display: flex; flex-direction: column; min-height: 200px; }
@@ -104,14 +103,11 @@
         #time-display { font-variant-numeric: tabular-nums; font-size: 1rem; color: var(--text-secondary); min-width: 80px; text-align: right; }
 
         /* --- モーダル群 --- */
-        /* ★ 修正ポイント: z-indexを20000に上げてホーム画面より手前に表示させる */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); z-index: 20000; justify-content: center; align-items: center; }
-        
         .modal-content { background: var(--panel-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 30px; border-radius: 14px; border: 0.5px solid var(--border-color); width: 85%; max-width: 450px; }
         .modal-content h2 { margin-top: 0; font-size: 1.2rem; margin-bottom: 10px; }
         .modal-desc { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.4;}
         
-        /* ファイル管理モーダル用 */
         .file-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid var(--border-color); }
         .file-row:last-child { border-bottom: none; }
         .file-name { font-weight: 500; font-size: 0.85rem; flex: 1; word-break: break-all;}
@@ -119,7 +115,6 @@
         .file-upload-label { background: var(--system-blue); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: 0.2s; white-space: nowrap;}
         .file-upload-label:hover { background: var(--system-blue-hover); }
 
-        /* 設定モーダル用 */
         .setting-group { margin-bottom: 20px; }
         .setting-group label { display: block; font-size: 0.9rem; margin-bottom: 8px; color: var(--text-secondary); }
         .setting-group input[type="range"] { width: 100%; }
@@ -156,27 +151,20 @@
             <div class="modal-desc">
                 ブラウザのセキュリティ設定により自動読み込みがブロックされる場合があります。<br>その際は以下の「Load」ボタンからファイルを選択してください。
             </div>
-            
             <div class="file-row">
                 <span class="file-name">japan.geo.json<br><span style="color:#FF453A; font-size:10px;">(必須 Required)</span></span>
                 <span class="file-status" id="file-map-status">❌</span>
-                <label class="file-upload-label">
-                    Load<input type="file" id="input-file-map" accept=".json" style="display:none;">
-                </label>
+                <label class="file-upload-label">Load<input type="file" id="input-file-map" style="display:none;"></label>
             </div>
             <div class="file-row">
                 <span class="file-name">area.nankai.trough.json<br><span style="color:#8E8E93; font-size:10px;">(任意 Optional)</span></span>
                 <span class="file-status" id="file-trough-status">❌</span>
-                <label class="file-upload-label">
-                    Load<input type="file" id="input-file-trough" accept=".json" style="display:none;">
-                </label>
+                <label class="file-upload-label">Load<input type="file" id="input-file-trough" style="display:none;"></label>
             </div>
             <div class="file-row">
                 <span class="file-name">japan_plate_boundaries.json<br><span style="color:#8E8E93; font-size:10px;">(任意 Optional)</span></span>
                 <span class="file-status" id="file-plate-status">❌</span>
-                <label class="file-upload-label">
-                    Load<input type="file" id="input-file-plates" accept=".json" style="display:none;">
-                </label>
+                <label class="file-upload-label">Load<input type="file" id="input-file-plates" style="display:none;"></label>
             </div>
             <button id="close-files-btn" class="apple-btn" style="width: 100%; margin-top: 20px;">Close</button>
         </div>
@@ -185,13 +173,13 @@
     <div id="settings-overlay" class="modal-overlay">
         <div class="modal-content">
             <h2>Simulation Settings</h2>
-            <div class="setting-group">
-                <label>Sensor Noise Level: <span id="noise-val">Normal</span></label>
-                <input type="range" id="param-noise" min="0" max="2" step="0.5" value="1.0">
+            <div class="setting-group" style="margin-bottom: 20px;">
+                <label style="display:block; margin-bottom:8px; color:#8E8E93;">Sensor Noise Level: <span id="noise-val">Normal</span></label>
+                <input type="range" id="param-noise" min="0" max="2" step="0.5" value="1.0" style="width:100%;">
             </div>
-            <div class="setting-group">
-                <label>SSE (Slow Slip) Frequency: <span id="sse-val">Normal</span></label>
-                <input type="range" id="param-sse" min="20" max="80" step="10" value="40">
+            <div class="setting-group" style="margin-bottom: 20px;">
+                <label style="display:block; margin-bottom:8px; color:#8E8E93;">SSE (Slow Slip) Frequency: <span id="sse-val">Normal</span></label>
+                <input type="range" id="param-sse" min="20" max="80" step="10" value="40" style="width:100%;">
             </div>
             <button id="apply-settings-btn" class="apple-btn" style="width: 100%; margin-top: 10px;">Regenerate Data</button>
             <button id="close-settings-btn" class="apple-btn" style="width: 100%; margin-top: 10px; background-color: var(--panel-bg); border: 1px solid var(--system-gray); color: var(--text-primary);">Cancel</button>
@@ -213,23 +201,17 @@
         <div id="main">
             <div id="map-container" class="glass-panel">
                 <canvas id="map-bg" class="map-layer"></canvas>
+                <canvas id="map-trough" class="map-layer"></canvas>
                 <canvas id="map-fg" class="map-layer"></canvas>
             </div>
             <div id="charts-container">
                 <div class="chart-box glass-panel">
-                    <div class="chart-title">
-                        Vertical Displacement (cm)
-                        <span class="chart-hint">Tap map to compare</span>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="timeSeriesChart" class="chart"></canvas>
-                    </div>
+                    <div class="chart-title">Vertical Displacement (cm) <span class="chart-hint">Tap map to compare</span></div>
+                    <div class="chart-wrapper"><canvas id="timeSeriesChart" class="chart"></canvas></div>
                 </div>
                 <div class="chart-box glass-panel">
                     <div class="chart-title">Global Slip Deficit</div>
-                    <div class="chart-wrapper">
-                        <canvas id="depthProfileChart" class="chart"></canvas>
-                    </div>
+                    <div class="chart-wrapper"><canvas id="depthProfileChart" class="chart"></canvas></div>
                 </div>
             </div>
         </div>
@@ -259,7 +241,7 @@
             { id: 4, lon: 136.89, lat: 34.27, name: "大王崎" }
         ];
 
-        // --- ファイル管理 (CORS対策済み) ---
+        // --- ファイル管理 ---
         const geoFiles = {
             map: { url: "japan.geo.json", data: null, elId: "file-map-status" },
             trough: { url: "area.nankai.trough.json", data: null, elId: "file-trough-status" },
@@ -274,9 +256,7 @@
                         geoFiles[key].data = await res.json();
                         document.getElementById(geoFiles[key].elId).innerText = "✅";
                     }
-                } catch(e) { 
-                    console.log(`${geoFiles[key].url} の自動読み込みがブロックされました`); 
-                }
+                } catch(e) { console.log(`${geoFiles[key].url} の自動読み込みがブロックされました`); }
             }
             checkReady();
         }
@@ -296,7 +276,7 @@
             
             if (isBootstrapped) {
                 updatePaths();
-                renderMapBG();
+                renderStaticMaps();
             }
         }
 
@@ -311,9 +291,11 @@
                             geoFiles[key].data = JSON.parse(ev.target.result);
                             document.getElementById(geoFiles[key].elId).innerText = "✅";
                             checkReady();
-                        } catch(err) { alert("ファイルの解析に失敗しました。正しいJSONファイルか確認してください。"); }
+                        } catch(err) { alert("JSONファイルの解析に失敗しました。"); }
                     };
                     reader.readAsText(file);
+                    // 同一ファイルを再度選べるようにリセットしておく
+                    e.target.value = '';
                 });
             };
             handleFile('input-file-map', 'map');
@@ -321,7 +303,7 @@
             handleFile('input-file-plates', 'plates');
         }
 
-        // --- シミュレーション処理 ---
+        // --- シミュレーション生成 ---
         let historyData = [];
         let simParams = { noiseMultiplier: 1.0, sseFrequency: 40 };
 
@@ -329,19 +311,17 @@
             historyData = [];
             let globalSlipDeficit = 0;
             let currentDisplacements = stationsGeo.map(() => 0);
+            let rawSeries = stationsGeo.map(() => []);
 
             for (let t = 0; t <= MAX_TIME; t++) {
                 let state = { time: t, isSseActive: false, isMegaQuake: false, globalSlipDeficit: 0, stations: [] };
                 
                 globalSlipDeficit += 0.1;
-
                 if (Math.sin(t / simParams.sseFrequency) > 0.85) { 
-                    state.isSseActive = true;
-                    globalSlipDeficit -= 0.15; 
+                    state.isSseActive = true; globalSlipDeficit -= 0.15; 
                 }
                 if (globalSlipDeficit > 50) {
-                    state.isMegaQuake = true;
-                    globalSlipDeficit = 0; 
+                    state.isMegaQuake = true; globalSlipDeficit = 0; 
                 }
                 if (globalSlipDeficit < 0) globalSlipDeficit = 0;
                 
@@ -356,17 +336,34 @@
                     let noise = (Math.random() - 0.5) * simParams.noiseMultiplier;
                     let val = currentDisplacements[i] + noise;
                     
+                    rawSeries[i].push(val);
+                    
                     let anomalyScore = state.isSseActive ? 0.8 + Math.random()*0.2 : 0.2 + Math.random()*0.2;
                     if(state.isMegaQuake) anomalyScore = 1.0;
 
-                    state.stations.push({ id: station.id, value: val, anomaly: anomalyScore });
+                    state.stations.push({ 
+                        id: station.id, value: val, anomaly: anomalyScore, filteredValue: 0 
+                    });
                 });
                 historyData.push(state);
             }
+
+            const windowSize = 10;
+            stationsGeo.forEach((station, i) => {
+                for (let t = 0; t <= MAX_TIME; t++) {
+                    let sum = 0, count = 0;
+                    for (let j = Math.max(0, t - windowSize + 1); j <= t; j++) {
+                        sum += rawSeries[i][j];
+                        count++;
+                    }
+                    historyData[t].stations[i].filteredValue = sum / count;
+                }
+            });
         }
 
-        // --- 描画処理 ---
-        let bgCanvas, fgCanvas, bgCtx, fgCtx, projection;
+        // --- マップ描画 ---
+        let bgCanvas, troughCanvas, fgCanvas;
+        let bgCtx, troughCtx, fgCtx, projection;
         let mapPath2D = null, troughPath2D = null, platePath2D = null;
         let currentTransform = d3.zoomIdentity;
         let lastDrawnTransform = d3.zoomIdentity;
@@ -379,20 +376,26 @@
             if (geoFiles.plates.data) platePath2D = new Path2D(pathGen(geoFiles.plates.data));
         }
 
-        function drawMap() {
+        function initCanvasSystem() {
             bgCanvas = document.getElementById('map-bg');
+            troughCanvas = document.getElementById('map-trough');
             fgCanvas = document.getElementById('map-fg');
+            
             bgCtx = bgCanvas.getContext('2d');
+            troughCtx = troughCanvas.getContext('2d');
             fgCtx = fgCanvas.getContext('2d');
             
             const container = document.getElementById('map-container');
-            bgCanvas.width = fgCanvas.width = container.clientWidth;
-            bgCanvas.height = fgCanvas.height = container.clientHeight;
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+            
+            bgCanvas.width = troughCanvas.width = fgCanvas.width = cw;
+            bgCanvas.height = troughCanvas.height = fgCanvas.height = ch;
 
             projection = d3.geoMercator()
                 .center([137.0, 36.0]) 
                 .scale(2000) 
-                .translate([bgCanvas.width / 2, bgCanvas.height / 2]);
+                .translate([cw / 2, ch / 2]);
 
             updatePaths();
 
@@ -402,13 +405,17 @@
                     const s = currentTransform.k / lastDrawnTransform.k;
                     const tx = currentTransform.x - lastDrawnTransform.x * s;
                     const ty = currentTransform.y - lastDrawnTransform.y * s;
-                    bgCanvas.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
-                    renderStationsFG();
+                    
+                    const transformStr = `translate(${tx}px, ${ty}px) scale(${s})`;
+                    bgCanvas.style.transform = transformStr;
+                    troughCanvas.style.transform = transformStr;
+                    fgCanvas.style.transform = transformStr;
                 })
                 .on("end", () => {
                     lastDrawnTransform = currentTransform;
-                    renderMapBG();
-                    bgCanvas.style.transform = `translate(0px, 0px) scale(1)`;
+                    bgCanvas.style.transform = troughCanvas.style.transform = fgCanvas.style.transform = `translate(0px, 0px) scale(1)`;
+                    renderStaticMaps();
+                    updateDynamicElements();
                 });
             
             d3.select(fgCanvas).call(zoom);
@@ -443,61 +450,60 @@
                         if(selectedStationIds.length > 3) selectedStationIds.shift();
                     }
                     updateCharts();
-                    renderStationsFG();
+                    updateDynamicElements(); 
                 }
             });
-
-            renderMapBG();
-            renderStationsFG();
         }
 
-        function renderMapBG() {
+        function renderStaticMaps() {
             if (!bgCtx || !mapPath2D) return;
+            
             bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
             bgCtx.save();
             bgCtx.translate(lastDrawnTransform.x, lastDrawnTransform.y);
             bgCtx.scale(lastDrawnTransform.k, lastDrawnTransform.k);
 
-            // 日本地図描画
             bgCtx.fillStyle = "#1C1C1E"; 
             bgCtx.fill(mapPath2D);
             bgCtx.lineWidth = 0.5 / lastDrawnTransform.k;
             bgCtx.strokeStyle = "#3A3A3C";
             bgCtx.stroke(mapPath2D);
 
-            // プレート境界線 (任意読み込み)
             if (platePath2D) {
                 bgCtx.lineWidth = 1.2 / lastDrawnTransform.k;
-                bgCtx.strokeStyle = "rgba(255, 159, 10, 0.7)"; // System Orange
+                bgCtx.strokeStyle = "rgba(255, 159, 10, 0.7)";
                 bgCtx.setLineDash([6 / lastDrawnTransform.k, 4 / lastDrawnTransform.k]);
                 bgCtx.stroke(platePath2D);
                 bgCtx.setLineDash([]);
             }
-
-            // 南海トラフ領域 (任意読み込み・ヒートマップ連動)
-            if (troughPath2D) {
-                const state = historyData.length > 0 ? historyData[currentTime] : null;
-                let heatOpacity = 0.1;
-                if(state) {
-                    heatOpacity = 0.1 + (state.globalSlipDeficit / 50) * 0.6; 
-                    if(state.isMegaQuake) heatOpacity = 0.9;
-                }
-                bgCtx.fillStyle = `rgba(255, 69, 58, ${heatOpacity})`; 
-                bgCtx.fill(troughPath2D);
-                bgCtx.lineWidth = 1 / lastDrawnTransform.k;
-                bgCtx.strokeStyle = "rgba(255, 69, 58, 0.5)";
-                bgCtx.stroke(troughPath2D);
-            }
-            
             bgCtx.restore();
+
+            troughCtx.clearRect(0, 0, troughCanvas.width, troughCanvas.height);
+            if (troughPath2D) {
+                troughCtx.save();
+                troughCtx.translate(lastDrawnTransform.x, lastDrawnTransform.y);
+                troughCtx.scale(lastDrawnTransform.k, lastDrawnTransform.k);
+                
+                troughCtx.fillStyle = "rgba(255, 69, 58, 1.0)"; 
+                troughCtx.fill(troughPath2D);
+                troughCtx.lineWidth = 1.0 / lastDrawnTransform.k;
+                troughCtx.strokeStyle = "rgba(255, 69, 58, 0.5)";
+                troughCtx.stroke(troughPath2D);
+                troughCtx.restore();
+            }
         }
 
-        function renderStationsFG() {
+        function updateDynamicElements() {
             if (!fgCtx) return;
-            fgCtx.clearRect(0, 0, fgCanvas.width, fgCanvas.height);
             const state = historyData.length > 0 ? historyData[currentTime] : null;
 
-            renderMapBG();
+            if (troughCanvas && state) {
+                let heatOpacity = 0.05 + (state.globalSlipDeficit / 50) * 0.5; 
+                if (state.isMegaQuake) heatOpacity = 0.9;
+                troughCanvas.style.opacity = heatOpacity;
+            }
+
+            fgCtx.clearRect(0, 0, fgCanvas.width, fgCanvas.height);
 
             stationsGeo.forEach(station => {
                 const [px, py] = projection([station.lon, station.lat]);
@@ -589,31 +595,25 @@
                 statusEl.innerText = "Normal"; statusEl.className = "status-normal";
             }
 
-            renderStationsFG();
+            updateDynamicElements();
             updateCharts();
         }
 
         function updateCharts() {
-            const currentHistory = historyData.slice(0, currentTime + 1);
             const displayLimit = 80;
-            const slicedHistory = currentHistory.slice(-displayLimit);
+            const startIdx = Math.max(0, currentTime - displayLimit + 1);
             
+            const slicedHistory = historyData.slice(startIdx, currentTime + 1);
             timeSeriesChart.data.labels = slicedHistory.map(d => d.time);
             
             const newDatasets = [];
             selectedStationIds.forEach((id, index) => {
                 const stationName = stationsGeo.find(s => s.id === id).name;
                 const color = stationColors[index % stationColors.length];
-                
-                const rawData = slicedHistory.map(d => d.stations.find(s => s.id === id).value);
-                const windowSize = 10;
-                const filteredData = rawData.map((val, idx, arr) => {
-                    if(idx < windowSize) return val;
-                    return arr.slice(idx - windowSize, idx).reduce((a, b) => a + b, 0) / windowSize;
-                });
+                const preFilteredData = slicedHistory.map(d => d.stations.find(s => s.id === id).filteredValue);
 
                 newDatasets.push({
-                    label: stationName, data: filteredData, borderColor: color, borderWidth: 2, tension: 0.4, pointRadius: 0
+                    label: stationName, data: preFilteredData, borderColor: color, borderWidth: 2, tension: 0.4, pointRadius: 0
                 });
             });
 
@@ -634,7 +634,7 @@
                 playInterval = setInterval(() => {
                     if (currentTime < MAX_TIME) { currentTime++; updateUI(); } 
                     else { togglePlay(); }
-                }, 50);
+                }, 50); 
             } else {
                 clearInterval(playInterval);
             }
@@ -682,9 +682,10 @@
 
         async function bootstrap() {
             if (isBootstrapped) { startSimulation(); return; }
-            generateSimulationData();
+            generateSimulationData(); 
+            initCanvasSystem();       
+            renderStaticMaps();       
             initCharts();
-            drawMap();
             isBootstrapped = true;
             startSimulation();
         }
@@ -711,19 +712,22 @@
         });
 
         window.addEventListener('resize', () => {
-            if(bgCanvas && fgCanvas && currentGeoData) {
+            if(bgCanvas && currentGeoData) {
                 const container = document.getElementById('map-container');
-                bgCanvas.width = fgCanvas.width = container.clientWidth;
-                bgCanvas.height = fgCanvas.height = container.clientHeight;
-                projection.translate([bgCanvas.width / 2, bgCanvas.height / 2]);
+                const cw = container.clientWidth;
+                const ch = container.clientHeight;
+                
+                bgCanvas.width = troughCanvas.width = fgCanvas.width = cw;
+                bgCanvas.height = troughCanvas.height = fgCanvas.height = ch;
+                
+                projection.translate([cw / 2, ch / 2]);
                 updatePaths();
                 lastDrawnTransform = currentTransform;
-                renderMapBG();
-                renderStationsFG();
+                renderStaticMaps();
+                updateDynamicElements();
             }
         });
 
-        // ページロード時にファイル群を自動読み込み
         window.onload = () => {
             setupFileInputs();
             autoLoadFiles();
