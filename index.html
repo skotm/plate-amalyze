@@ -294,7 +294,8 @@
                         } catch(err) { alert("JSONファイルの解析に失敗しました。"); }
                     };
                     reader.readAsText(file);
-                    // 同一ファイルを再度選べるようにリセットしておく
+                    
+                    // 同じファイルを連続で選べるようにリセット
                     e.target.value = '';
                 });
             };
@@ -303,7 +304,7 @@
             handleFile('input-file-plates', 'plates');
         }
 
-        // --- シミュレーション生成 ---
+        // --- シミュレーション処理 ---
         let historyData = [];
         let simParams = { noiseMultiplier: 1.0, sseFrequency: 40 };
 
@@ -311,6 +312,7 @@
             historyData = [];
             let globalSlipDeficit = 0;
             let currentDisplacements = stationsGeo.map(() => 0);
+            
             let rawSeries = stationsGeo.map(() => []);
 
             for (let t = 0; t <= MAX_TIME; t++) {
@@ -341,9 +343,7 @@
                     let anomalyScore = state.isSseActive ? 0.8 + Math.random()*0.2 : 0.2 + Math.random()*0.2;
                     if(state.isMegaQuake) anomalyScore = 1.0;
 
-                    state.stations.push({ 
-                        id: station.id, value: val, anomaly: anomalyScore, filteredValue: 0 
-                    });
+                    state.stations.push({ id: station.id, value: val, anomaly: anomalyScore, filteredValue: 0 });
                 });
                 historyData.push(state);
             }
@@ -361,7 +361,7 @@
             });
         }
 
-        // --- マップ描画 ---
+        // --- 描画処理 ---
         let bgCanvas, troughCanvas, fgCanvas;
         let bgCtx, troughCtx, fgCtx, projection;
         let mapPath2D = null, troughPath2D = null, platePath2D = null;
@@ -450,7 +450,7 @@
                         if(selectedStationIds.length > 3) selectedStationIds.shift();
                     }
                     updateCharts();
-                    updateDynamicElements(); 
+                    updateDynamicElements();
                 }
             });
         }
@@ -604,12 +604,14 @@
             const startIdx = Math.max(0, currentTime - displayLimit + 1);
             
             const slicedHistory = historyData.slice(startIdx, currentTime + 1);
+            
             timeSeriesChart.data.labels = slicedHistory.map(d => d.time);
             
             const newDatasets = [];
             selectedStationIds.forEach((id, index) => {
                 const stationName = stationsGeo.find(s => s.id === id).name;
                 const color = stationColors[index % stationColors.length];
+                
                 const preFilteredData = slicedHistory.map(d => d.stations.find(s => s.id === id).filteredValue);
 
                 newDatasets.push({
@@ -728,6 +730,7 @@
             }
         });
 
+        // ページロード時にファイル群を自動読み込み
         window.onload = () => {
             setupFileInputs();
             autoLoadFiles();
