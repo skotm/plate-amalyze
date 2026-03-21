@@ -235,9 +235,9 @@
         const lanesY = { tokai: 0.3, tonankai: 0.5, nankai: 0.7 }; 
         const laneColors = { tokai: '#FF9F0A', tonankai: '#32D74B', nankai: '#0A84FF' };
 
-        // ▼ 現実データに即してFactor（沈降限界）を微調整
+        // ▼ 潮岬の所属セグメントを "nankai" に修正
         const stationsGeo = [
-            { id: 0, lon: 135.76, lat: 33.43, name: "潮岬",   segment: "tonankai", baseDisp: 0, factor: -0.09 },
+            { id: 0, lon: 135.76, lat: 33.43, name: "潮岬",   segment: "nankai",   baseDisp: 0, factor: -0.09 },
             { id: 1, lon: 134.17, lat: 33.24, name: "室戸岬", segment: "nankai",   baseDisp: 0, factor: -0.13 },
             { id: 2, lon: 133.01, lat: 32.72, name: "足摺岬", segment: "nankai",   baseDisp: 0, factor: -0.08 },
             { id: 3, lon: 138.22, lat: 34.59, name: "御前崎", segment: "tokai",    baseDisp: 0, factor: -0.15 },
@@ -298,7 +298,17 @@
                 for (const [segKey, segData] of Object.entries(segs)) {
                     if (Math.random() < adjustedSseProb) {
                         state.sseEvents.push(segKey);
-                        segData.deficit = Math.max(0, segData.deficit - (15 + Math.random() * 30));
+                        // ▼ より現実的なスロースリップの歪み解放処理
+                        let sseType = Math.random();
+                        let releaseAmount = 0;
+                        if (sseType < 0.85) {
+                            // 85%の確率で短期的SSE（約1.2〜3.0cm相当の微小な解放）
+                            releaseAmount = 1.0 + Math.random() * 1.5;
+                        } else {
+                            // 15%の確率で長期的SSE（約10〜18cm相当のやや大きな解放）
+                            releaseAmount = 8.0 + Math.random() * 7.0;
+                        }
+                        segData.deficit = Math.max(0, segData.deficit - releaseAmount);
                     }
                 }
 
@@ -308,7 +318,6 @@
                 }
 
                 if (newlyRuptured.length > 0) {
-                    // ▼ 閾値スケールアップに伴い、連動破壊の判定基準（DANGER_THRESHOLD）も引き上げ
                     const DANGER_THRESHOLD = 800; let added = true; const checkedPaths = new Set();
                     while (added) {
                         added = false;
@@ -344,7 +353,6 @@
             historyData.push(state);
         }
 
-        // ▼ 地下の破壊閾値のベースを現実に合わせて引き上げ (900 〜 1300)
         function generateThreshold() { return 900 + Math.random() * 400; }
 
         let bgCanvas, troughCanvas, fgCanvas, zoomOverlay;
@@ -457,7 +465,6 @@
                 } 
             });
             const ctx2 = document.getElementById('deficitChart').getContext('2d');
-            // ▼ 閾値が上がったため、Y軸の最大値を 1200 から 1500 に変更しました
             deficitChart = new Chart(ctx2, { type: 'bar', data: { labels: ['Tokai', 'Tonankai', 'Nankai'], datasets: [{ label: 'Slip Deficit', data: [0, 0, 0], backgroundColor: ['#FF9F0A', '#32D74B', '#0A84FF'], borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { position: 'right', min: 0, max: 1500, border: { display: false } } } } });
         }
 
@@ -574,7 +581,7 @@
             if (state.ruptures.length > 0) { statusEl.innerText = `RUPTURE: ${state.ruptures.map(r => r.toUpperCase()).join(" & ")}`; statusEl.className = "status-quake"; } 
             else if (state.sseEvents.length > 0) { statusEl.innerText = `Slow Slip Detected`; statusEl.className = "status-normal"; statusEl.style.color = "#BF5AF2"; statusEl.style.background = "rgba(191, 90, 242, 0.2)"; } 
             else {
-                let isWarn = false; for(const key in state.segmentsInfo) { if (state.segmentsInfo[key].deficit > 800) isWarn = true; } // ここも警告ラインを少し引き上げ
+                let isWarn = false; for(const key in state.segmentsInfo) { if (state.segmentsInfo[key].deficit > 800) isWarn = true; }
                 if(isWarn) { statusEl.innerText = "Critical Strain"; statusEl.className = "status-warn"; statusEl.style.color = ""; statusEl.style.background = "";}
                 else { statusEl.innerText = "System Normal"; statusEl.className = "status-normal"; statusEl.style.color = ""; statusEl.style.background = "";}
             }
