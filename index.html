@@ -235,7 +235,6 @@
         const lanesY = { tokai: 0.3, tonankai: 0.5, nankai: 0.7 }; 
         const laneColors = { tokai: '#FF9F0A', tonankai: '#32D74B', nankai: '#0A84FF' };
 
-        // ▼ 潮岬の所属セグメントを "nankai" に修正
         const stationsGeo = [
             { id: 0, lon: 135.76, lat: 33.43, name: "潮岬",   segment: "nankai",   baseDisp: 0, factor: -0.09 },
             { id: 1, lon: 134.17, lat: 33.24, name: "室戸岬", segment: "nankai",   baseDisp: 0, factor: -0.13 },
@@ -297,17 +296,22 @@
                 let adjustedSseProb = simParams.sseProbability * scale * 2.0; 
                 for (const [segKey, segData] of Object.entries(segs)) {
                     if (Math.random() < adjustedSseProb) {
-                        state.sseEvents.push(segKey);
-                        // ▼ より現実的なスロースリップの歪み解放処理
+                        // ▼ Mw（マグニチュード）の計算と履歴データへのオブジェクト保存
                         let sseType = Math.random();
                         let releaseAmount = 0;
+                        let mag = 0;
+                        
                         if (sseType < 0.85) {
-                            // 85%の確率で短期的SSE（約1.2〜3.0cm相当の微小な解放）
+                            // 短期的SSE (Mw 5.5〜6.4)
                             releaseAmount = 1.0 + Math.random() * 1.5;
+                            mag = 5.5 + ((releaseAmount - 1.0) / 1.5) * 0.9;
                         } else {
-                            // 15%の確率で長期的SSE（約10〜18cm相当のやや大きな解放）
+                            // 長期的SSE (Mw 6.7〜7.1)
                             releaseAmount = 8.0 + Math.random() * 7.0;
+                            mag = 6.7 + ((releaseAmount - 8.0) / 7.0) * 0.4;
                         }
+                        
+                        state.sseEvents.push({ seg: segKey, mag: mag.toFixed(1) });
                         segData.deficit = Math.max(0, segData.deficit - releaseAmount);
                     }
                 }
@@ -451,6 +455,53 @@
             });
         }
 
+        // ▼ カスタムプラグイン: SSEのマグニチュードをグラフに直接描画
+        const sseLabelPlugin = {
+            id: 'sseLabelPlugin',
+            afterDatasetsDraw(chart, args, options) {
+                const { ctx } = chart;
+                ctx.save();
+                ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                
+                chart.data.datasets.forEach((dataset, datasetIndex) => {
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    if (!meta.hidden) {
+                        const stationId = selectedStationIds[datasetIndex];
+                        const station = stationsGeo.find(s => s.id === stationId);
+                        if (!station) return;
+                        
+                        meta.data.forEach((element, index) => {
+                            if (isNaN(element.y)) return;
+                            const timeVal = chart.data.labels[index];
+                            const state = historyData[timeVal];
+                            
+                            // 該当のタイミング・セグメントでSSEが起きていれば描画
+                            if (state && state.sseEvents && state.sseEvents.length > 0) {
+                                const sse = state.sseEvents.find(e => e.seg === station.segment);
+                                if (sse) {
+                                    const text = `Mw${sse.mag}`;
+                                    const textWidth = ctx.measureText(text).width;
+                                    
+                                    // 背景の半透明カプセルを描画（視認性向上）
+                                    ctx.fillStyle = 'rgba(28, 28, 30, 0.7)';
+                                    ctx.beginPath();
+                                    ctx.roundRect(element.x - textWidth/2 - 4, element.y - 20, textWidth + 8, 14, 4);
+                                    ctx.fill();
+                                    
+                                    // 紫色の文字を描画
+                                    ctx.fillStyle = '#BF5AF2';
+                                    ctx.fillText(text, element.x, element.y - 7);
+                                }
+                            }
+                        });
+                    }
+                });
+                ctx.restore();
+            }
+        };
+
         let timeSeriesChart, deficitChart;
         function initCharts() {
             Chart.defaults.color = 'rgba(235, 235, 245, 0.6)'; Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)'; Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, sans-serif';
@@ -462,7 +513,8 @@
                     responsive: true, maintainAspectRatio: false, animation: false, 
                     plugins: { legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, color: '#FFF' } } }, 
                     scales: { x: { display: true, ticks: { maxTicksLimit: 5, callback: val => `+${val}` } }, y: { position: 'right', border: { display: false } } } 
-                } 
+                },
+                plugins: [sseLabelPlugin] // カスタムプラグインを登録
             });
             const ctx2 = document.getElementById('deficitChart').getContext('2d');
             deficitChart = new Chart(ctx2, { type: 'bar', data: { labels: ['Tokai', 'Tonankai', 'Nankai'], datasets: [{ label: 'Slip Deficit', data: [0, 0, 0], backgroundColor: ['#FF9F0A', '#32D74B', '#0A84FF'], borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { position: 'right', min: 0, max: 1500, border: { display: false } } } } });
@@ -578,9 +630,18 @@
             if (historyData.length === 0) return; const state = historyData[currentTime];
             document.getElementById('time-display').innerText = `${simParams.timeUnit.charAt(0).toUpperCase() + simParams.timeUnit.slice(1)} +${currentTime}`; 
             const statusEl = document.getElementById('alert-status');
-            if (state.ruptures.length > 0) { statusEl.innerText = `RUPTURE: ${state.ruptures.map(r => r.toUpperCase()).join(" & ")}`; statusEl.className = "status-quake"; } 
-            else if (state.sseEvents.length > 0) { statusEl.innerText = `Slow Slip Detected`; statusEl.className = "status-normal"; statusEl.style.color = "#BF5AF2"; statusEl.style.background = "rgba(191, 90, 242, 0.2)"; } 
-            else {
+            
+            if (state.ruptures.length > 0) { 
+                statusEl.innerText = `RUPTURE: ${state.ruptures.map(r => r.toUpperCase()).join(" & ")}`; 
+                statusEl.className = "status-quake"; 
+            } else if (state.sseEvents.length > 0) { 
+                // アラートステータスにもMwを表示
+                let mags = state.sseEvents.map(e => `Mw${e.mag}`).join(", ");
+                statusEl.innerText = `Slow Slip Detected (${mags})`; 
+                statusEl.className = "status-normal"; 
+                statusEl.style.color = "#BF5AF2"; 
+                statusEl.style.background = "rgba(191, 90, 242, 0.2)"; 
+            } else {
                 let isWarn = false; for(const key in state.segmentsInfo) { if (state.segmentsInfo[key].deficit > 800) isWarn = true; }
                 if(isWarn) { statusEl.innerText = "Critical Strain"; statusEl.className = "status-warn"; statusEl.style.color = ""; statusEl.style.background = "";}
                 else { statusEl.innerText = "System Normal"; statusEl.className = "status-normal"; statusEl.style.color = ""; statusEl.style.background = "";}
@@ -615,7 +676,8 @@
                             if (!state || !state.ruptures) return undefined;
                             
                             if (state.ruptures.includes(station.segment)) return '#FF453A';
-                            if (state.sseEvents.includes(station.segment)) return '#BF5AF2';
+                            // ▼ sseEventsがオブジェクト配列になったため検索方法を変更
+                            if (state.sseEvents.some(e => e.seg === station.segment)) return '#BF5AF2';
                             return undefined;
                         },
                         borderWidth: ctx => {
@@ -624,7 +686,7 @@
                             const state = historyData[timeVal];
                             if (!state || !state.ruptures) return undefined;
 
-                            if (state.ruptures.includes(station.segment) || state.sseEvents.includes(station.segment)) return 3;
+                            if (state.ruptures.includes(station.segment) || state.sseEvents.some(e => e.seg === station.segment)) return 3;
                             return undefined;
                         }
                     }
