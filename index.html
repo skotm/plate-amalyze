@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Nankai Megathrust Digital Twin</title>
+    <title>Megathrust Digital Twin Pro</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
@@ -13,6 +13,7 @@
             --text-primary: #FFFFFF; --text-secondary: rgba(235, 235, 245, 0.6); --system-blue: #0A84FF;
             --system-blue-hover: #409CFF; --system-red: #FF453A; --system-green: #32D74B;
             --system-orange: #FF9F0A; --system-gray: #8E8E93; --system-purple: #BF5AF2; --system-yellow: #FFD60A;
+            --system-cyan: #32ADE6; --system-mint: #00C7BE; --system-pink: #FF2D55;
         }
 
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
@@ -59,9 +60,16 @@
         #map-bg { z-index: 1; } #map-trough { z-index: 2; } #map-fg { z-index: 10; } 
         #zoom-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; touch-action: none; cursor: grab; }
 
+        #charts-area {
+            flex: 1; display: flex; flex-direction: column; gap: 16px; max-width: 45%; min-height: 0;
+        }
+
+        .tabs-container { display: flex; gap: 10px; padding: 4px; background: rgba(0,0,0,0.3); border-radius: 12px; flex-shrink: 0; border: 0.5px solid var(--border-color);}
+        .tab-btn { flex: 1; background: transparent; border: none; color: var(--text-secondary); padding: 8px 0; font-size: 0.95rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .tab-btn.active { background: var(--panel-bg); color: var(--text-primary); box-shadow: 0 2px 8px rgba(0,0,0,0.3); border: 0.5px solid rgba(255,255,255,0.2); }
+
         #charts-container { 
-            flex: 1; display: flex; flex-direction: column; gap: 16px; max-width: 40%; 
-            overflow-y: auto; overflow-x: hidden; padding-right: 4px; overscroll-behavior: contain; min-height: 0;
+            display: flex; flex-direction: column; gap: 16px; overflow-y: auto; overflow-x: hidden; padding-right: 4px; overscroll-behavior: contain; flex: 1; min-height: 0;
         }
         #charts-container::-webkit-scrollbar { width: 6px; }
         #charts-container::-webkit-scrollbar-track { background: transparent; }
@@ -115,7 +123,7 @@
         @media (max-width: 768px) and (orientation: portrait) {
             #main { flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
             #map-container { flex: none; height: 35vh; min-height: 250px; }
-            #charts-container { max-width: 100%; flex: 1; flex-direction: column; gap: 16px; overflow-y: auto; min-height: 0; }
+            #charts-area { max-width: 100%; flex: 1; }
             .chart-box { flex: none; height: 250px; }
             #controls { position: relative; z-index: 1000; box-shadow: 0 -10px 20px rgba(0,0,0,0.5); flex-shrink: 0; }
         }
@@ -127,7 +135,7 @@
         <button id="home-files-btn">Data Files</button>
         <div class="home-content">
             <div class="home-title">Digital Twin Pro</div>
-            <div class="home-subtitle">Nankai Megathrust Simulation Engine</div>
+            <div class="home-subtitle">Megathrust Simulation Engine</div>
             <button id="start-system-btn" class="apple-btn" disabled>Waiting for Map Data...</button>
         </div>
     </div>
@@ -137,8 +145,9 @@
             <h2>GeoJSON Data Sources</h2>
             <div class="modal-desc">自動読み込みがブロックされた場合はファイルを選択してください。</div>
             <div class="file-row"><span class="file-name">japan.geo.json<br><span style="color:#FF453A; font-size:10px;">(必須)</span></span><span class="file-status" id="file-map-status">❌</span><label class="file-upload-label">Load<input type="file" id="input-file-map" style="display:none;"></label></div>
-            <div class="file-row"><span class="file-name">area.nankai.trough.json<br><span style="color:#8E8E93; font-size:10px;">(任意)</span></span><span class="file-status" id="file-trough-status">❌</span><label class="file-upload-label">Load<input type="file" id="input-file-trough" style="display:none;"></label></div>
-            <div class="file-row"><span class="file-name">japan_plate_boundaries.json<br><span style="color:#8E8E93; font-size:10px;">(任意)</span></span><span class="file-status" id="file-plate-status">❌</span><label class="file-upload-label">Load<input type="file" id="input-file-plates" style="display:none;"></label></div>
+            <div class="file-row"><span class="file-name">area.nankai.trough.json<br><span style="color:#8E8E93; font-size:10px;">(南海トラフ)</span></span><span class="file-status" id="file-trough-status">❌</span><label class="file-upload-label">Load<input type="file" id="input-file-trough" style="display:none;"></label></div>
+            <div class="file-row"><span class="file-name">area.japan.trench.json<br><span style="color:#8E8E93; font-size:10px;">(日本海溝)</span></span><span class="file-status" id="file-trench-status">❌</span><label class="file-upload-label">Load<input type="file" id="input-file-trench" style="display:none;"></label></div>
+            <div class="file-row"><span class="file-name">japan_plate_boundaries.json<br><span style="color:#8E8E93; font-size:10px;">(プレート境界)</span></span><span class="file-status" id="file-plate-status">❌</span><label class="file-upload-label">Load<input type="file" id="input-file-plates" style="display:none;"></label></div>
             <button id="close-files-btn" class="apple-btn" style="width: 100%; margin-top: 20px;">Close</button>
         </div>
     </div>
@@ -170,38 +179,45 @@
                 <div id="zoom-overlay"></div>
             </div>
             
-            <div id="charts-container">
-                <div class="chart-box glass-panel">
-                    <div class="chart-title">
-                        <div class="chart-title-left">Vertical Disp. (cm)</div>
-                        <div class="chart-actions">
-                            <button id="reset-pan-btn" class="reset-btn">Live</button>
-                            <button class="expand-btn" onclick="toggleFullscreen(this)">⛶</button>
-                        </div>
-                    </div>
-                    <div class="chart-wrapper" id="time-series-wrapper"><canvas id="timeSeriesChart" class="chart"></canvas></div>
+            <div id="charts-area">
+                <div class="tabs-container">
+                    <button class="tab-btn active" data-target="nankai">Nankai Trough</button>
+                    <button class="tab-btn" data-target="trench">Japan Trench</button>
                 </div>
                 
-                <div class="chart-box glass-panel">
-                    <div class="chart-title">
-                        <div class="chart-title-left">Slip Deficit by Segment</div>
-                        <div class="chart-actions">
-                            <button class="expand-btn" onclick="toggleFullscreen(this)">⛶</button>
+                <div id="charts-container">
+                    <div class="chart-box glass-panel">
+                        <div class="chart-title">
+                            <div class="chart-title-left">Vertical Disp. (cm)</div>
+                            <div class="chart-actions">
+                                <button id="reset-pan-btn" class="reset-btn">Live</button>
+                                <button class="expand-btn" onclick="toggleFullscreen(this)">⛶</button>
+                            </div>
                         </div>
+                        <div class="chart-wrapper" id="time-series-wrapper"><canvas id="timeSeriesChart" class="chart"></canvas></div>
                     </div>
-                    <div class="chart-wrapper"><canvas id="deficitChart" class="chart"></canvas></div>
-                </div>
+                    
+                    <div class="chart-box glass-panel">
+                        <div class="chart-title">
+                            <div class="chart-title-left">Slip Deficit by Segment</div>
+                            <div class="chart-actions">
+                                <button class="expand-btn" onclick="toggleFullscreen(this)">⛶</button>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper"><canvas id="deficitChart" class="chart"></canvas></div>
+                    </div>
 
-                <div class="chart-box glass-panel" style="flex: 1.5; min-height: 250px;">
-                    <div class="chart-title">
-                        <div class="chart-title-left">Rupture Timeline <span class="chart-hint">(Mag & Interval)</span></div>
-                        <div class="chart-actions">
-                            <button id="reset-tl-btn" class="reset-btn">Live</button>
-                            <button class="expand-btn" onclick="toggleFullscreen(this)">⛶</button>
+                    <div class="chart-box glass-panel" style="flex: 1.5; min-height: 250px;">
+                        <div class="chart-title">
+                            <div class="chart-title-left">Rupture Timeline <span class="chart-hint">(Mag & Interval)</span></div>
+                            <div class="chart-actions">
+                                <button id="reset-tl-btn" class="reset-btn">Live</button>
+                                <button class="expand-btn" onclick="toggleFullscreen(this)">⛶</button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="chart-wrapper" id="timeline-wrapper">
-                        <canvas id="timelineChart" class="chart"></canvas>
+                        <div class="chart-wrapper" id="timeline-wrapper">
+                            <canvas id="timelineChart" class="chart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -214,7 +230,6 @@
     </div>
 
     <script>
-        // --- 設定と状態変数 ---
         let simParams = { timeUnit: 'year', noiseLevel: 4.0, sseProbability: 0.03, playSpeedMs: 100 };
         const CHART_WINDOW = 100; 
         const TIMELINE_WINDOW = 400; 
@@ -222,90 +237,144 @@
         let currentTime = 0; let isPlaying = false; let playInterval; let isBootstrapped = false;
         let chartPanOffset = 0; let tlPanOffset = 0; 
         let activeShockwaves = [];
-        
         let historyData = [];
         let simulationState = {};
         let timelineClusters = [];
 
+        // タブ状態管理
+        let activeTabGroup = 'nankai'; // 'nankai' or 'trench'
+
+        const NANKAI_SEGS = ['tokai', 'tonankai', 'nankai', 'hyuganada'];
+        const TRENCH_SEGS = ['sanriku_n', 'sanriku_c', 'miyagi', 'fukushima', 'ibaraki', 'boso'];
+
         const segmentCenters = { 
-            hyuganada: [131.8, 31.8],
-            nankai: [133.5, 32.8], 
-            tonankai: [136.89, 34.27], 
-            tokai: [138.22, 34.59]     
+            hyuganada: [131.8, 31.8], nankai: [133.5, 32.8], tonankai: [136.89, 34.27], tokai: [138.22, 34.59],
+            boso: [141.5, 34.8], ibaraki: [141.8, 36.3], fukushima: [142.3, 37.3], miyagi: [142.8, 38.3], sanriku_c: [143.2, 39.5], sanriku_n: [143.5, 40.5]
         };
-        const lanesY = { tokai: 0.25, tonankai: 0.45, nankai: 0.65, hyuganada: 0.85 }; 
-        const laneColors = { tokai: '#FF9F0A', tonankai: '#32D74B', nankai: '#0A84FF', hyuganada: '#BF5AF2' };
+
+        const lanesY = {
+            nankai: { tokai: 0.25, tonankai: 0.45, nankai: 0.65, hyuganada: 0.85 },
+            trench: { sanriku_n: 0.15, sanriku_c: 0.28, miyagi: 0.41, fukushima: 0.54, ibaraki: 0.67, boso: 0.80 }
+        };
+
+        const laneColors = { 
+            tokai: '#FF9F0A', tonankai: '#32D74B', nankai: '#0A84FF', hyuganada: '#BF5AF2',
+            sanriku_n: '#BF5AF2', sanriku_c: '#32ADE6', miyagi: '#0A84FF', fukushima: '#32D74B', ibaraki: '#FFD60A', boso: '#FF9F0A'
+        };
 
         const stationsGeo = [
-            { id: 0, lon: 135.76, lat: 33.43, name: "潮岬",   segment: "nankai",   baseDisp: 0, factor: -0.09 },
-            { id: 1, lon: 134.17, lat: 33.24, name: "室戸岬", segment: "nankai",   baseDisp: 0, factor: -0.13 },
-            { id: 2, lon: 133.01, lat: 32.72, name: "足摺岬", segment: "nankai",   baseDisp: 0, factor: -0.08 },
-            { id: 3, lon: 138.22, lat: 34.59, name: "御前崎", segment: "tokai",    baseDisp: 0, factor: -0.15 },
-            { id: 4, lon: 136.89, lat: 34.27, name: "大王崎", segment: "tonankai", baseDisp: 0, factor: -0.06 },
-            { id: 5, lon: 131.8,  lat: 31.8,  name: "日向灘沖", segment: "hyuganada",baseDisp: 0, factor: -0.07 }
+            // 南海
+            { id: 0, lon: 135.76, lat: 33.43, name: "潮岬",   segment: "nankai",   baseDisp: 0, factor: -0.09, group: 'nankai' },
+            { id: 1, lon: 134.17, lat: 33.24, name: "室戸岬", segment: "nankai",   baseDisp: 0, factor: -0.13, group: 'nankai' },
+            { id: 2, lon: 133.01, lat: 32.72, name: "足摺岬", segment: "nankai",   baseDisp: 0, factor: -0.08, group: 'nankai' },
+            { id: 3, lon: 138.22, lat: 34.59, name: "御前崎", segment: "tokai",    baseDisp: 0, factor: -0.15, group: 'nankai' },
+            { id: 4, lon: 136.89, lat: 34.27, name: "大王崎", segment: "tonankai", baseDisp: 0, factor: -0.06, group: 'nankai' },
+            { id: 5, lon: 131.8,  lat: 31.8,  name: "日向灘沖", segment: "hyuganada",baseDisp: 0, factor: -0.07, group: 'nankai' },
+            // 日本海溝
+            { id: 10, lon: 141.95, lat: 39.63, name: "宮古",   segment: "sanriku_c", baseDisp: 0, factor: -0.10, group: 'trench' },
+            { id: 11, lon: 140.87, lat: 38.26, name: "仙台",   segment: "miyagi",    baseDisp: 0, factor: -0.14, group: 'trench' },
+            { id: 12, lon: 140.88, lat: 37.05, name: "いわき", segment: "fukushima", baseDisp: 0, factor: -0.12, group: 'trench' },
+            { id: 13, lon: 140.47, lat: 36.36, name: "水戸",   segment: "ibaraki",   baseDisp: 0, factor: -0.08, group: 'trench' },
+            { id: 14, lon: 140.83, lat: 35.73, name: "銚子",   segment: "boso",      baseDisp: 0, factor: -0.11, group: 'trench' }
         ];
-        let selectedStationIds = [1, 3, 5]; 
+        
+        let selectedStationIds = [1, 3, 5]; // 初期は南海
         const stationColors = ['#0A84FF', '#32D74B', '#FF9F0A', '#BF5AF2', '#FF453A', '#FFD60A'];
 
-        const geoFiles = { map: { url: "japan.geo.json", data: null, elId: "file-map-status" }, trough: { url: "area.nankai.trough.json", data: null, elId: "file-trough-status" }, plates: { url: "japan_plate_boundaries.json", data: null, elId: "file-plate-status" } };
-        async function autoLoadFiles() { for (const key in geoFiles) { try { const res = await fetch(geoFiles[key].url); if (res.ok) { geoFiles[key].data = await res.json(); document.getElementById(geoFiles[key].elId).innerText = "✅"; } } catch(e) {} } checkReady(); }
+        const geoFiles = { 
+            map: { url: "japan.geo.json", data: null, elId: "file-map-status" }, 
+            trough: { url: "area.nankai.trough.json", data: null, elId: "file-trough-status" }, 
+            trench: { url: "area.japan.trench.json", data: null, elId: "file-trench-status" },
+            plates: { url: "japan_plate_boundaries.json", data: null, elId: "file-plate-status" } 
+        };
+
+        async function autoLoadFiles() { 
+            for (const key in geoFiles) { 
+                try { const res = await fetch(geoFiles[key].url); if (res.ok) { geoFiles[key].data = await res.json(); document.getElementById(geoFiles[key].elId).innerText = "✅"; } } catch(e) {} 
+            } 
+            checkReady(); 
+        }
         function checkReady() { const startBtn = document.getElementById('start-system-btn'); if (geoFiles.map.data) { startBtn.disabled = false; startBtn.innerText = "Start System"; } else { startBtn.disabled = true; startBtn.innerText = "Waiting for Map Data..."; } }
-        function setupFileInputs() { const handleFile = (inputId, key) => { document.getElementById(inputId).addEventListener('change', (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { try { geoFiles[key].data = JSON.parse(ev.target.result); document.getElementById(geoFiles[key].elId).innerText = "✅"; checkReady(); } catch(err) {} }; reader.readAsText(file); e.target.value = ''; }); }; handleFile('input-file-map', 'map'); handleFile('input-file-trough', 'trough'); handleFile('input-file-plates', 'plates'); }
+        
+        function setupFileInputs() { 
+            const handleFile = (inputId, key) => { 
+                document.getElementById(inputId).addEventListener('change', (e) => { 
+                    const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); 
+                    reader.onload = (ev) => { try { geoFiles[key].data = JSON.parse(ev.target.result); document.getElementById(geoFiles[key].elId).innerText = "✅"; checkReady(); } catch(err) {} }; 
+                    reader.readAsText(file); e.target.value = ''; 
+                }); 
+            }; 
+            handleFile('input-file-map', 'map'); handleFile('input-file-trough', 'trough'); handleFile('input-file-trench', 'trench'); handleFile('input-file-plates', 'plates'); 
+        }
+
+        // タブ切り替えロジック
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                activeTabGroup = e.target.getAttribute('data-target');
+                
+                if (activeTabGroup === 'nankai') selectedStationIds = [1, 3, 5]; // 室戸, 御前崎, 日向灘
+                else selectedStationIds = [10, 11, 14]; // 宮古, 仙台, 銚子
+                
+                if (isBootstrapped) {
+                    chartPanOffset = 0; tlPanOffset = 0;
+                    document.getElementById('reset-pan-btn').style.display = 'none';
+                    document.getElementById('reset-tl-btn').style.display = 'none';
+                    updateCharts();
+                }
+            });
+        });
 
         function getMag(segments) {
             const types = segments.length;
-            if (types === 4) return 9.1 + Math.random() * 0.3;
-            if (types === 3) return 8.8 + Math.random() * 0.3;
-            if (types === 2) return 8.3 + Math.random() * 0.4;
-            if (segments[0] === 'hyuganada') return 7.1 + Math.random() * 0.5;
-            return 7.9 + Math.random() * 0.4;
+            if (types >= 4) return 9.0 + Math.random() * 0.4;
+            if (types === 3) return 8.6 + Math.random() * 0.3;
+            if (types === 2) return 8.1 + Math.random() * 0.4;
+            if (segments[0] === 'hyuganada' || segments[0].includes('sanriku') || segments[0] === 'boso' || segments[0] === 'ibaraki') return 7.1 + Math.random() * 0.6;
+            return 7.5 + Math.random() * 0.4;
         }
 
         function createCluster(time, segments) {
-            return {
-                id: Math.random(), startTime: time, endTime: time,
-                events: segments.map(s => ({time: time, seg: s})),
-                uniqueSegments: [...segments], mag: getMag(segments)
-            };
+            return { id: Math.random(), startTime: time, endTime: time, events: segments.map(s => ({time: time, seg: s})), uniqueSegments: [...segments], mag: getMag(segments) };
         }
 
-        function processRuptureToTimeline(time, newlyRuptured) {
-            const order = ['tokai', 'tonankai', 'nankai', 'hyuganada'];
-            let sorted = newlyRuptured.slice().sort((a, b) => order.indexOf(a) - order.indexOf(b));
-            
-            let groups = [];
-            let currentGroup = [];
+        function processRuptureToTimeline(time, newlyRuptured, orderArr) {
+            if(newlyRuptured.length === 0) return;
+            let sorted = newlyRuptured.slice().sort((a, b) => orderArr.indexOf(a) - orderArr.indexOf(b));
+            let groups = []; let currentGroup = [];
             
             for (let i = 0; i < sorted.length; i++) {
-                if (currentGroup.length === 0) {
-                    currentGroup.push(sorted[i]);
-                } else {
+                if (currentGroup.length === 0) { currentGroup.push(sorted[i]); } 
+                else {
                     let lastSeg = currentGroup[currentGroup.length - 1];
-                    if (order.indexOf(sorted[i]) === order.indexOf(lastSeg) + 1) {
-                        currentGroup.push(sorted[i]);
-                    } else {
-                        groups.push(currentGroup);
-                        currentGroup = [sorted[i]];
-                    }
+                    if (orderArr.indexOf(sorted[i]) === orderArr.indexOf(lastSeg) + 1) currentGroup.push(sorted[i]);
+                    else { groups.push(currentGroup); currentGroup = [sorted[i]]; }
                 }
             }
             if (currentGroup.length > 0) groups.push(currentGroup);
-
-            groups.forEach(group => {
-                timelineClusters.push(createCluster(time, group));
-            });
+            groups.forEach(group => timelineClusters.push(createCluster(time, group)));
         }
 
         function initSimulation() {
             historyData = []; currentTime = 0; chartPanOffset = 0; tlPanOffset = 0;
             activeShockwaves = []; timelineClusters = [];
             
+            // ▼ 南海と日本海溝の初期パラメータ
             simulationState = { 
                 segments: { 
-                    hyuganada: { deficit: 50, threshold: generateHyuganadaThreshold() },
-                    nankai: { deficit: 600, threshold: generateThreshold() }, 
-                    tonankai: { deficit: 650, threshold: generateThreshold() }, 
-                    tokai: { deficit: 700, threshold: generateThreshold() } 
+                    // 南海グループ
+                    hyuganada: { deficit: 50, threshold: 120 + Math.random() * 60, group: 'nankai' },
+                    nankai: { deficit: 600, threshold: 900 + Math.random() * 400, group: 'nankai' }, 
+                    tonankai: { deficit: 650, threshold: 900 + Math.random() * 400, group: 'nankai' }, 
+                    tokai: { deficit: 700, threshold: 900 + Math.random() * 400, group: 'nankai' },
+                    // 日本海溝グループ（太平洋プレートの速さを考慮した閾値）
+                    sanriku_n: { deficit: 100, threshold: 850 + Math.random() * 200, group: 'trench' }, // 約100年
+                    sanriku_c: { deficit: 150, threshold: 1200 + Math.random() * 400, group: 'trench' }, // 大連動用
+                    miyagi: { deficit: 250, threshold: 320 + Math.random() * 80, group: 'trench' }, // 約38年 (38 * 8.5)
+                    fukushima: { deficit: 200, threshold: 500 + Math.random() * 200, group: 'trench' },
+                    ibaraki: { deficit: 50, threshold: 170 + Math.random() * 50, group: 'trench' }, // 約20年 (20 * 8.5)
+                    boso: { deficit: 100, threshold: 850 + Math.random() * 200, group: 'trench' } // 約100年
                 } 
             };
             computeNextStep();
@@ -317,104 +386,111 @@
             let segs = simulationState.segments;
 
             if (currentTime > 0) {
-                let subduction = (5.0 + (Math.random() * 3.0 - 1.5)) * scale;
-                segs.hyuganada.deficit += subduction;
-                segs.nankai.deficit += subduction; 
-                segs.tonankai.deficit += subduction; 
-                segs.tokai.deficit += subduction;
+                // ▼ 沈み込み速度の差：太平洋プレート(Trench)はフィリピン海プレート(Nankai)の約1.6倍
+                let subductionNankai = (5.0 + (Math.random() * 3.0 - 1.5)) * scale;
+                let subductionTrench = (8.5 + (Math.random() * 4.0 - 2.0)) * scale;
+
+                for (const [key, data] of Object.entries(segs)) {
+                    data.deficit += (data.group === 'nankai') ? subductionNankai : subductionTrench;
+                }
 
                 let adjustedSseProb = simParams.sseProbability * scale * 2.0; 
                 for (const [segKey, segData] of Object.entries(segs)) {
-                    let prob = segKey === 'hyuganada' ? adjustedSseProb * 1.5 : adjustedSseProb;
+                    let prob = segKey === 'hyuganada' || segKey === 'ibaraki' ? adjustedSseProb * 1.5 : adjustedSseProb;
                     if (Math.random() < prob) {
-                        let sseType = Math.random();
-                        let releaseAmount = 0;
-                        let mag = 0;
-                        
-                        if (sseType < 0.85) {
-                            releaseAmount = 1.0 + Math.random() * 1.5;
-                            mag = 5.5 + ((releaseAmount - 1.0) / 1.5) * 0.9;
-                        } else {
-                            releaseAmount = 8.0 + Math.random() * 7.0;
-                            mag = 6.7 + ((releaseAmount - 8.0) / 7.0) * 0.4;
-                        }
-                        
+                        let releaseAmount = (Math.random() < 0.85) ? 1.0 + Math.random() * 1.5 : 8.0 + Math.random() * 7.0;
+                        let mag = (releaseAmount < 3) ? 5.5 + ((releaseAmount - 1.0) / 1.5) * 0.9 : 6.7 + ((releaseAmount - 8.0) / 7.0) * 0.4;
                         state.sseEvents.push({ seg: segKey, mag: mag.toFixed(1) });
                         segData.deficit = Math.max(0, segData.deficit - releaseAmount);
                     }
                 }
 
-                let newlyRuptured = [];
+                let rupturedNankai = []; let rupturedTrench = [];
                 for (const [segKey, segData] of Object.entries(segs)) {
-                    if (segData.deficit >= segData.threshold) newlyRuptured.push(segKey);
+                    if (segData.deficit >= segData.threshold) {
+                        if (segData.group === 'nankai') rupturedNankai.push(segKey); else rupturedTrench.push(segKey);
+                    }
                 }
 
-                if (newlyRuptured.length > 0) {
-                    const DANGER_THRESHOLD = 700; 
-                    const HYUGA_DANGER = 60; 
-                    let added = true; const checkedPaths = new Set();
-                    
-                    // ▼ 連動確率を 60% に調整
+                // --- 南海グループの連動処理 ---
+                if (rupturedNankai.length > 0) {
+                    const DANGER = 700; const HYUGA_DANGER = 60; let added = true; const checked = new Set();
                     while (added) {
                         added = false;
-                        
-                        if (newlyRuptured.includes('tonankai')) {
-                            if (!newlyRuptured.includes('nankai') && segs.nankai.deficit > DANGER_THRESHOLD && !checkedPaths.has('tonankai_to_nankai')) { checkedPaths.add('tonankai_to_nankai'); if (Math.random() < 0.60) { newlyRuptured.push('nankai'); added = true; } }
-                            if (!newlyRuptured.includes('tokai') && segs.tokai.deficit > DANGER_THRESHOLD && !checkedPaths.has('tonankai_to_tokai')) { checkedPaths.add('tonankai_to_tokai'); if (Math.random() < 0.60) { newlyRuptured.push('tokai'); added = true; } }
+                        if (rupturedNankai.includes('tonankai')) {
+                            if (!rupturedNankai.includes('nankai') && segs.nankai.deficit > DANGER && !checked.has('to_nan')) { checked.add('to_nan'); if (Math.random() < 0.6) { rupturedNankai.push('nankai'); added = true; } }
+                            if (!rupturedNankai.includes('tokai') && segs.tokai.deficit > DANGER && !checked.has('to_tok')) { checked.add('to_tok'); if (Math.random() < 0.6) { rupturedNankai.push('tokai'); added = true; } }
                         }
-                        if (newlyRuptured.includes('nankai') && !newlyRuptured.includes('tonankai') && segs.tonankai.deficit > DANGER_THRESHOLD && !checkedPaths.has('nankai_to_tonankai')) { checkedPaths.add('nankai_to_tonankai'); if (Math.random() < 0.60) { newlyRuptured.push('tonankai'); added = true; } }
-                        if (newlyRuptured.includes('tokai') && !newlyRuptured.includes('tonankai') && segs.tonankai.deficit > DANGER_THRESHOLD && !checkedPaths.has('tokai_to_tonankai')) { checkedPaths.add('tokai_to_tonankai'); if (Math.random() < 0.60) { newlyRuptured.push('tonankai'); added = true; } }
+                        if (rupturedNankai.includes('nankai') && !rupturedNankai.includes('tonankai') && segs.tonankai.deficit > DANGER && !checked.has('nan_to')) { checked.add('nan_to'); if (Math.random() < 0.6) { rupturedNankai.push('tonankai'); added = true; } }
+                        if (rupturedNankai.includes('tokai') && !rupturedNankai.includes('tonankai') && segs.tonankai.deficit > DANGER && !checked.has('tok_to')) { checked.add('tok_to'); if (Math.random() < 0.6) { rupturedNankai.push('tonankai'); added = true; } }
                         
-                        if (newlyRuptured.includes('nankai') && !newlyRuptured.includes('hyuganada') && segs.hyuganada.deficit > HYUGA_DANGER && !checkedPaths.has('nankai_to_hyuga')) { 
-                            checkedPaths.add('nankai_to_hyuga'); 
-                            if (Math.random() < 0.60) { newlyRuptured.push('hyuganada'); added = true; } 
-                        }
-                        
-                        // 日向灘からの引き金効果（誘発率）は 25% のままキープ
-                        if (newlyRuptured.includes('hyuganada') && !newlyRuptured.includes('nankai') && segs.nankai.deficit > DANGER_THRESHOLD && !checkedPaths.has('hyuga_to_nankai')) { 
-                            checkedPaths.add('hyuga_to_nankai'); 
-                            if (Math.random() < 0.25) { newlyRuptured.push('nankai'); added = true; } 
-                        }
+                        if (rupturedNankai.includes('nankai') && !rupturedNankai.includes('hyuganada') && segs.hyuganada.deficit > HYUGA_DANGER && !checked.has('nan_hyu')) { checked.add('nan_hyu'); if (Math.random() < 0.6) { rupturedNankai.push('hyuganada'); added = true; } }
+                        if (rupturedNankai.includes('hyuganada') && !rupturedNankai.includes('nankai') && segs.nankai.deficit > DANGER && !checked.has('hyu_nan')) { checked.add('hyu_nan'); if (Math.random() < 0.25) { rupturedNankai.push('nankai'); added = true; } }
                     }
-                    
-                    state.ruptures = [...newlyRuptured];
-                    processRuptureToTimeline(currentTime, newlyRuptured);
-
-                    newlyRuptured.forEach(key => { 
-                        segs[key].deficit = 0; 
-                        segs[key].threshold = key === 'hyuganada' ? generateHyuganadaThreshold() : generateThreshold(); 
-                        activeShockwaves.push({ lon: segmentCenters[key][0], lat: segmentCenters[key][1], radius: 10, alpha: 1.0 }); 
-                    });
-                    
-                    for (const segKey of Object.keys(segs)) { 
-                        if (!newlyRuptured.includes(segKey)) segs[segKey].deficit += 100; 
-                    }
+                    processRuptureToTimeline(currentTime, rupturedNankai, NANKAI_SEGS);
+                    rupturedNankai.forEach(k => { segs[k].deficit = 0; segs[k].threshold = k === 'hyuganada' ? 100 + Math.random() * 60 : 900 + Math.random() * 400; activeShockwaves.push({ lon: segmentCenters[k][0], lat: segmentCenters[k][1], radius: 10, alpha: 1.0 }); });
+                    NANKAI_SEGS.forEach(k => { if (!rupturedNankai.includes(k)) segs[k].deficit += 100; });
                 }
+
+                // --- 日本海溝グループの連動処理 (M9 超広域連動ロジック) ---
+                if (rupturedTrench.length > 0) {
+                    let added = true; const checked = new Set();
+                    while (added) {
+                        added = false;
+                        for (let i = 0; i < TRENCH_SEGS.length; i++) {
+                            let curr = TRENCH_SEGS[i];
+                            if (rupturedTrench.includes(curr)) {
+                                let prev = TRENCH_SEGS[i-1]; let next = TRENCH_SEGS[i+1];
+                                
+                                // 隣接領域のひずみが閾値の90%を超えていれば、80%の超高確率で連鎖破壊（ドミノ倒し）
+                                if (prev && !rupturedTrench.includes(prev) && !checked.has(`${curr}_${prev}`)) { 
+                                    checked.add(`${curr}_${prev}`); 
+                                    let ratio = segs[prev].deficit / segs[prev].threshold;
+                                    if (ratio > 0.90 && Math.random() < 0.8) { rupturedTrench.push(prev); added = true; }
+                                    else if (ratio > 0.75 && Math.random() < 0.3) { rupturedTrench.push(prev); added = true; }
+                                }
+                                if (next && !rupturedTrench.includes(next) && !checked.has(`${curr}_${next}`)) { 
+                                    checked.add(`${curr}_${next}`); 
+                                    let ratio = segs[next].deficit / segs[next].threshold;
+                                    if (ratio > 0.90 && Math.random() < 0.8) { rupturedTrench.push(next); added = true; }
+                                    else if (ratio > 0.75 && Math.random() < 0.3) { rupturedTrench.push(next); added = true; }
+                                }
+                            }
+                        }
+                    }
+                    processRuptureToTimeline(currentTime, rupturedTrench, TRENCH_SEGS);
+                    rupturedTrench.forEach(k => { 
+                        segs[k].deficit = 0; 
+                        let baseThresh = 850;
+                        if(k === 'miyagi') baseThresh = 320; else if(k==='ibaraki') baseThresh = 170; else if(k==='sanriku_c') baseThresh = 1200; else if(k==='fukushima') baseThresh = 500;
+                        segs[k].threshold = baseThresh + Math.random() * (baseThresh * 0.3);
+                        activeShockwaves.push({ lon: segmentCenters[k][0], lat: segmentCenters[k][1], radius: 10, alpha: 1.0 }); 
+                    });
+                    TRENCH_SEGS.forEach(k => { if (!rupturedTrench.includes(k)) segs[k].deficit += 150; }); // シワ寄せ
+                }
+                
+                state.ruptures = [...rupturedNankai, ...rupturedTrench];
             }
 
             stationsGeo.forEach((station) => {
                 let currentDeficit = segs[station.segment].deficit;
                 let currentThreshold = segs[station.segment].threshold;
-
                 let strainRatio = currentDeficit / currentThreshold;
                 let yieldEffect = Math.pow(strainRatio, 4);
                 let effectiveDeficit = currentDeficit * (1.0 - 0.25 * yieldEffect);
-
                 let idealDisp = station.baseDisp + (effectiveDeficit * station.factor);
                 let noise = (Math.random() - 0.5) * 2.0 * simParams.noiseLevel; 
-                state.stations.push({ id: station.id, value: idealDisp + noise, segment: station.segment });
+                state.stations.push({ id: station.id, value: idealDisp + noise, segment: station.segment, group: station.group });
             });
 
             state.segmentsInfo = JSON.parse(JSON.stringify(segs));
             historyData.push(state);
         }
 
-        function generateThreshold() { return 900 + Math.random() * 400; }
-        function generateHyuganadaThreshold() { return 100 + Math.random() * 60; }
-
         let bgCanvas, troughCanvas, fgCanvas, zoomOverlay;
         let bgCtx, troughCtx, fgCtx, projection;
-        let mapPath2D = null, platePath2D = null, troughPaths2D = { tokai: null, tonankai: null, nankai: null, hyuganada: null };
+        let mapPath2D = null, platePath2D = null;
+        let troughPaths2D = {}; 
         let currentTransform = d3.zoomIdentity, lastDrawnTransform = d3.zoomIdentity; 
         let tlCanvas, tlCtx;
 
@@ -423,39 +499,37 @@
             if (geoFiles.map.data) mapPath2D = new Path2D(pathGen(geoFiles.map.data)); 
             if (geoFiles.plates.data) platePath2D = new Path2D(pathGen(geoFiles.plates.data)); 
             
-            if (geoFiles.trough.data && geoFiles.trough.data.features) {
-                let pathsStr = { tokai: "", tonankai: "", nankai: "", hyuganada: "" };
-                
-                geoFiles.trough.data.features.forEach(feature => {
-                    if (d3.geoArea(feature) > 2 * Math.PI) {
-                        if (feature.geometry.type === 'Polygon') {
-                            feature.geometry.coordinates.forEach(ring => ring.reverse());
-                        } else if (feature.geometry.type === 'MultiPolygon') {
-                            feature.geometry.coordinates.forEach(poly => poly.forEach(ring => ring.reverse()));
-                        }
-                    }
+            troughPaths2D = {};
+            [...NANKAI_SEGS, ...TRENCH_SEGS].forEach(k => troughPaths2D[k] = null);
 
-                    let p = pathGen(feature);
+            // 南海ポリゴン
+            if (geoFiles.trough.data && geoFiles.trough.data.features) {
+                let pStr = { tokai: "", tonankai: "", nankai: "", hyuganada: "" };
+                geoFiles.trough.data.features.forEach(f => {
+                    if (d3.geoArea(f) > 2 * Math.PI) { if (f.geometry.type === 'Polygon') f.geometry.coordinates.forEach(r => r.reverse()); else if (f.geometry.type === 'MultiPolygon') f.geometry.coordinates.forEach(p => p.forEach(r => r.reverse())); }
+                    let p = pathGen(f);
                     if (p) { 
-                        let name = feature.properties.name || "";
-                        if (name.includes("東海")) pathsStr.tokai += p;
-                        else if (name.includes("東南海")) pathsStr.tonankai += p;
-                        else if (name.includes("南海")) pathsStr.nankai += p;
-                        else if (name.includes("日向灘")) pathsStr.hyuganada += p;
-                        else {
-                            let bounds = d3.geoBounds(feature); let centerLon = (bounds[0][0] + bounds[1][0]) / 2;
-                            if (centerLon > 137.2) pathsStr.tokai += p; 
-                            else if (centerLon > 135.0) pathsStr.tonankai += p; 
-                            else if (centerLon > 133.0) pathsStr.nankai += p; 
-                            else pathsStr.hyuganada += p;
-                        }
+                        let n = f.properties.name || "";
+                        if (n.includes("東海")) pStr.tokai += p; else if (n.includes("東南海")) pStr.tonankai += p; else if (n.includes("南海")) pStr.nankai += p; else if (n.includes("日向灘")) pStr.hyuganada += p;
+                        else { let b = d3.geoBounds(f); let c = (b[0][0] + b[1][0]) / 2; if (c > 137.2) pStr.tokai += p; else if (c > 135.0) pStr.tonankai += p; else if (c > 133.0) pStr.nankai += p; else pStr.hyuganada += p; }
                     }
                 });
-                
-                troughPaths2D.tokai = pathsStr.tokai ? new Path2D(pathsStr.tokai) : null;
-                troughPaths2D.tonankai = pathsStr.tonankai ? new Path2D(pathsStr.tonankai) : null;
-                troughPaths2D.nankai = pathsStr.nankai ? new Path2D(pathsStr.nankai) : null;
-                troughPaths2D.hyuganada = pathsStr.hyuganada ? new Path2D(pathsStr.hyuganada) : null;
+                NANKAI_SEGS.forEach(k => troughPaths2D[k] = pStr[k] ? new Path2D(pStr[k]) : null);
+            }
+
+            // 日本海溝ポリゴン
+            if (geoFiles.trench.data && geoFiles.trench.data.features) {
+                let pStr = { sanriku_n: "", sanriku_c: "", miyagi: "", fukushima: "", ibaraki: "", boso: "" };
+                geoFiles.trench.data.features.forEach(f => {
+                    if (d3.geoArea(f) > 2 * Math.PI) { if (f.geometry.type === 'Polygon') f.geometry.coordinates.forEach(r => r.reverse()); else if (f.geometry.type === 'MultiPolygon') f.geometry.coordinates.forEach(p => p.forEach(r => r.reverse())); }
+                    let p = pathGen(f);
+                    if (p) { 
+                        let n = f.properties.name || "";
+                        if (n.includes("三陸沖北部")) pStr.sanriku_n += p; else if (n.includes("三陸沖中部")) pStr.sanriku_c += p; else if (n.includes("宮城")) pStr.miyagi += p; 
+                        else if (n.includes("福島")) pStr.fukushima += p; else if (n.includes("茨城")) pStr.ibaraki += p; else if (n.includes("房総")) pStr.boso += p;
+                    }
+                });
+                TRENCH_SEGS.forEach(k => troughPaths2D[k] = pStr[k] ? new Path2D(pStr[k]) : null);
             }
         }
         
@@ -464,7 +538,8 @@
             const dpr = window.devicePixelRatio || 1;
             const container = document.getElementById('map-container'); const cw = container.clientWidth, ch = container.clientHeight; 
             resizeCanvasLayer(bgCanvas, bgCtx, cw, ch, dpr); resizeCanvasLayer(troughCanvas, troughCtx, cw, ch, dpr); resizeCanvasLayer(fgCanvas, fgCtx, cw, ch, dpr); 
-            projection = d3.geoMercator().center([135.5, 33.5]).scale(3200).translate([cw / 2, ch / 2]); 
+            // 全体が見えるように中心とスケールを調整
+            projection = d3.geoMercator().center([138.0, 36.5]).scale(2600).translate([cw / 2, ch / 2]); 
             updatePaths(); renderStaticMaps(); 
 
             const tlWrapper = document.getElementById('timeline-wrapper');
@@ -483,7 +558,10 @@
             d3.select(zoomOverlay).on("click touchstart", (event) => {
                 let mx, my; if (event.touches && event.touches.length > 0) { const rect = zoomOverlay.getBoundingClientRect(); mx = event.touches[0].clientX - rect.left; my = event.touches[0].clientY - rect.top; } else { [mx, my] = d3.pointer(event); }
                 let clickedStation = null, minDist = 25; 
-                stationsGeo.forEach(station => { const [px, py] = projection([station.lon, station.lat]); const screenX = px * currentTransform.k + currentTransform.x, screenY = py * currentTransform.k + currentTransform.y; const dist = Math.sqrt(Math.pow(mx - screenX, 2) + Math.pow(my - screenY, 2)); if (dist < minDist) { minDist = dist; clickedStation = station; } });
+                stationsGeo.forEach(station => { 
+                    if(station.group !== activeTabGroup) return; // アクティブなタブの観測点のみクリック可能
+                    const [px, py] = projection([station.lon, station.lat]); const screenX = px * currentTransform.k + currentTransform.x, screenY = py * currentTransform.k + currentTransform.y; const dist = Math.sqrt(Math.pow(mx - screenX, 2) + Math.pow(my - screenY, 2)); if (dist < minDist) { minDist = dist; clickedStation = station; } 
+                });
                 if (clickedStation) { const idx = selectedStationIds.indexOf(clickedStation.id); if (idx > -1) { if (selectedStationIds.length > 1) selectedStationIds.splice(idx, 1); } else { selectedStationIds.push(clickedStation.id); if(selectedStationIds.length > 4) selectedStationIds.shift(); } updateCharts(); }
             });
         }
@@ -493,8 +571,14 @@
             bgCtx.clearRect(0, 0, cw, ch); bgCtx.save(); bgCtx.translate(lastDrawnTransform.x, lastDrawnTransform.y); bgCtx.scale(lastDrawnTransform.k, lastDrawnTransform.k); 
             bgCtx.fillStyle = "#1C1C1E"; bgCtx.fill(mapPath2D); bgCtx.lineWidth = 0.5 / lastDrawnTransform.k; bgCtx.strokeStyle = "#3A3A3C"; bgCtx.stroke(mapPath2D);
             if (platePath2D) { bgCtx.lineWidth = 1.2 / lastDrawnTransform.k; bgCtx.strokeStyle = "rgba(255, 159, 10, 0.7)"; bgCtx.setLineDash([6 / lastDrawnTransform.k, 4 / lastDrawnTransform.k]); bgCtx.stroke(platePath2D); bgCtx.setLineDash([]); } 
-            bgCtx.lineWidth = 1.0 / lastDrawnTransform.k; bgCtx.strokeStyle = "rgba(255, 69, 58, 0.3)"; 
-            ['nankai', 'tonankai', 'tokai', 'hyuganada'].forEach(key => { if (troughPaths2D[key]) bgCtx.stroke(troughPaths2D[key]); });
+            
+            bgCtx.lineWidth = 1.0 / lastDrawnTransform.k; 
+            [...NANKAI_SEGS, ...TRENCH_SEGS].forEach(key => { 
+                if (troughPaths2D[key]) {
+                    bgCtx.strokeStyle = NANKAI_SEGS.includes(key) ? "rgba(255, 69, 58, 0.3)" : "rgba(10, 132, 255, 0.3)"; // 日本海溝は青系の枠線
+                    bgCtx.stroke(troughPaths2D[key]); 
+                }
+            });
             bgCtx.restore();
         }
 
@@ -506,11 +590,13 @@
             
             if (state) {
                 troughCtx.save(); troughCtx.translate(lastDrawnTransform.x, lastDrawnTransform.y); troughCtx.scale(lastDrawnTransform.k, lastDrawnTransform.k);
-                ['nankai', 'tonankai', 'tokai', 'hyuganada'].forEach(key => {
-                    if (troughPaths2D[key]) {
+                [...NANKAI_SEGS, ...TRENCH_SEGS].forEach(key => {
+                    if (troughPaths2D[key] && state.segmentsInfo[key]) {
                         let deficitRatio = state.segmentsInfo[key].deficit / state.segmentsInfo[key].threshold;
                         let heatOpacity = 0.05 + Math.pow(deficitRatio, 3) * 0.7; if (state.ruptures.includes(key)) heatOpacity = 0.9;
-                        troughCtx.fillStyle = `rgba(255, 69, 58, ${heatOpacity})`; troughCtx.fill(troughPaths2D[key]);
+                        // 南海は赤、日本海溝は青基調のヒートマップ
+                        troughCtx.fillStyle = NANKAI_SEGS.includes(key) ? `rgba(255, 69, 58, ${heatOpacity})` : `rgba(50, 173, 230, ${heatOpacity})`; 
+                        troughCtx.fill(troughPaths2D[key]);
                     }
                 });
                 troughCtx.restore();
@@ -519,13 +605,17 @@
             const cw = fgCanvas.clientWidth, ch = fgCanvas.clientHeight; fgCtx.clearRect(0, 0, cw, ch);
             for (let i = activeShockwaves.length - 1; i >= 0; i--) {
                 let sw = activeShockwaves[i]; const [px, py] = projection([sw.lon, sw.lat]); const sx = px * lastDrawnTransform.k + lastDrawnTransform.x, sy = py * lastDrawnTransform.k + lastDrawnTransform.y;
-                let grad = fgCtx.createRadialGradient(sx, sy, 0, sx, sy, sw.radius * lastDrawnTransform.k); grad.addColorStop(0, `rgba(255, 69, 58, ${sw.alpha * 0.8})`); grad.addColorStop(1, `rgba(255, 69, 58, 0)`);
+                let grad = fgCtx.createRadialGradient(sx, sy, 0, sx, sy, sw.radius * lastDrawnTransform.k); 
+                let rColor = sw.lon > 139 ? '50, 173, 230' : '255, 69, 58'; // 経度で色分け
+                grad.addColorStop(0, `rgba(${rColor}, ${sw.alpha * 0.8})`); grad.addColorStop(1, `rgba(${rColor}, 0)`);
                 fgCtx.beginPath(); fgCtx.arc(sx, sy, sw.radius * lastDrawnTransform.k, 0, Math.PI * 2); fgCtx.fillStyle = grad; fgCtx.fill();
                 sw.radius += 2.0; sw.alpha -= 0.012; if (sw.alpha <= 0) activeShockwaves.splice(i, 1);
             }
 
             stationsGeo.forEach(station => {
-                const [px, py] = projection([station.lon, station.lat]); const screenX = px * currentTransform.k + currentTransform.x, screenY = py * currentTransform.k + currentTransform.y;
+                if(station.group !== activeTabGroup) return; // マップ上のUIもアクティブタブのみ強調
+                
+                const [px, py] = projection([station.lon, station.lat]); const screenX = px * lastDrawnTransform.k + lastDrawnTransform.x, screenY = py * lastDrawnTransform.k + lastDrawnTransform.y;
                 let isRuptured = state && state.ruptures.includes(station.segment); const isSelected = selectedStationIds.includes(station.id); const colorIdx = selectedStationIds.indexOf(station.id); const stationColor = isSelected ? stationColors[colorIdx % stationColors.length] : "#8E8E93";
                 if(isSelected) { fgCtx.beginPath(); fgCtx.arc(screenX, screenY, 22, 0, 2 * Math.PI); fgCtx.fillStyle = `${stationColor}33`; fgCtx.fill(); }
                 fgCtx.beginPath(); fgCtx.arc(screenX, screenY, isSelected ? 6 : 4, 0, 2 * Math.PI); fgCtx.fillStyle = isRuptured ? "#FF453A" : stationColor; fgCtx.fill(); fgCtx.lineWidth = 1.5; fgCtx.strokeStyle = "#000000"; fgCtx.stroke();
@@ -537,36 +627,22 @@
             id: 'sseLabelPlugin',
             afterDatasetsDraw(chart, args, options) {
                 const { ctx } = chart;
-                ctx.save();
-                ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'bottom';
-                
+                ctx.save(); ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
                 chart.data.datasets.forEach((dataset, datasetIndex) => {
                     const meta = chart.getDatasetMeta(datasetIndex);
                     if (!meta.hidden) {
                         const stationId = selectedStationIds[datasetIndex];
                         const station = stationsGeo.find(s => s.id === stationId);
                         if (!station) return;
-                        
                         meta.data.forEach((element, index) => {
                             if (isNaN(element.y)) return;
-                            const timeVal = chart.data.labels[index];
-                            const state = historyData[timeVal];
-                            
+                            const timeVal = chart.data.labels[index]; const state = historyData[timeVal];
                             if (state && state.sseEvents && state.sseEvents.length > 0) {
                                 const sse = state.sseEvents.find(e => e.seg === station.segment);
                                 if (sse) {
-                                    const text = `Mw${sse.mag}`;
-                                    const textWidth = ctx.measureText(text).width;
-                                    
-                                    ctx.fillStyle = 'rgba(28, 28, 30, 0.7)';
-                                    ctx.beginPath();
-                                    ctx.roundRect(element.x - textWidth/2 - 4, element.y - 20, textWidth + 8, 14, 4);
-                                    ctx.fill();
-                                    
-                                    ctx.fillStyle = '#BF5AF2';
-                                    ctx.fillText(text, element.x, element.y - 7);
+                                    const text = `Mw${sse.mag}`; const textWidth = ctx.measureText(text).width;
+                                    ctx.fillStyle = 'rgba(28, 28, 30, 0.7)'; ctx.beginPath(); ctx.roundRect(element.x - textWidth/2 - 4, element.y - 20, textWidth + 8, 14, 4); ctx.fill();
+                                    ctx.fillStyle = '#BF5AF2'; ctx.fillText(text, element.x, element.y - 7);
                                 }
                             }
                         });
@@ -583,127 +659,43 @@
             timeSeriesChart = new Chart(ctx1, { 
                 type: 'line', 
                 data: { labels: [], datasets: [] }, 
-                options: { 
-                    responsive: true, maintainAspectRatio: false, animation: false, 
-                    plugins: { legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, color: '#FFF' } } }, 
-                    scales: { x: { display: true, ticks: { maxTicksLimit: 5, callback: val => `+${val}` } }, y: { position: 'right', border: { display: false } } } 
-                },
+                options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, color: '#FFF' } } }, scales: { x: { display: true, ticks: { maxTicksLimit: 5, callback: val => `+${val}` } }, y: { position: 'right', border: { display: false } } } },
                 plugins: [sseLabelPlugin] 
             });
             const ctx2 = document.getElementById('deficitChart').getContext('2d');
             deficitChart = new Chart(ctx2, { 
                 type: 'bar', 
-                data: { 
-                    labels: ['Tokai', 'Tonankai', 'Nankai', 'Hyuga'], 
-                    datasets: [{ label: 'Slip Deficit', data: [0, 0, 0, 0], backgroundColor: ['#FF9F0A', '#32D74B', '#0A84FF', '#BF5AF2'], borderRadius: 4 }] 
-                }, 
-                options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { position: 'right', min: 0, max: 1500, border: { display: false } } } } 
+                data: { labels: [], datasets: [{ label: 'Slip Deficit', data: [], backgroundColor: [], borderRadius: 4 }] }, 
+                options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 9 } } }, y: { position: 'right', min: 0, max: 1500, border: { display: false } } } } 
             });
         }
 
         function toggleFullscreen(btn) {
             const mapContainer = document.getElementById('map-container');
-            if (mapContainer.classList.contains('fullscreen-target')) {
-                mapContainer.classList.remove('fullscreen-target');
-                document.getElementById('map-expand-btn').innerHTML = '⛶';
-                setTimeout(() => resizeAllCanvas(), 50);
-            }
-
-            const box = btn.closest('.chart-box');
-            const isFullscreen = box.classList.contains('fullscreen-target');
-            
-            document.querySelectorAll('.chart-box.fullscreen-target').forEach(el => {
-                if (el !== box) { el.classList.remove('fullscreen-target'); el.querySelector('.expand-btn').innerHTML = '⛶'; }
-            });
-
-            if (isFullscreen) {
-                box.classList.remove('fullscreen-target'); btn.innerHTML = '⛶';
-            } else {
-                box.classList.add('fullscreen-target'); btn.innerHTML = '✖';
-            }
-
-            setTimeout(() => {
-                if (timeSeriesChart) timeSeriesChart.resize();
-                if (deficitChart) deficitChart.resize();
-                const tlWrapper = document.getElementById('timeline-wrapper');
-                if (tlWrapper && tlCanvas && isBootstrapped) {
-                    const dpr = window.devicePixelRatio || 1;
-                    resizeCanvasLayer(tlCanvas, tlCtx, tlWrapper.clientWidth, tlWrapper.clientHeight, dpr);
-                    drawTimeline();
-                }
-            }, 50);
+            if (mapContainer.classList.contains('fullscreen-target')) { mapContainer.classList.remove('fullscreen-target'); document.getElementById('map-expand-btn').innerHTML = '⛶'; setTimeout(() => resizeAllCanvas(), 50); }
+            const box = btn.closest('.chart-box'); const isFullscreen = box.classList.contains('fullscreen-target');
+            document.querySelectorAll('.chart-box.fullscreen-target').forEach(el => { if (el !== box) { el.classList.remove('fullscreen-target'); el.querySelector('.expand-btn').innerHTML = '⛶'; } });
+            if (isFullscreen) { box.classList.remove('fullscreen-target'); btn.innerHTML = '⛶'; } else { box.classList.add('fullscreen-target'); btn.innerHTML = '✖'; }
+            setTimeout(() => { if (timeSeriesChart) timeSeriesChart.resize(); if (deficitChart) deficitChart.resize(); const tlWrapper = document.getElementById('timeline-wrapper'); if (tlWrapper && tlCanvas && isBootstrapped) { const dpr = window.devicePixelRatio || 1; resizeCanvasLayer(tlCanvas, tlCtx, tlWrapper.clientWidth, tlWrapper.clientHeight, dpr); drawTimeline(); } }, 50);
         }
 
         document.getElementById('map-expand-btn').addEventListener('click', function() {
-            const container = document.getElementById('map-container');
-            const isFullscreen = container.classList.contains('fullscreen-target');
-            
-            document.querySelectorAll('.chart-box.fullscreen-target').forEach(el => {
-                el.classList.remove('fullscreen-target'); el.querySelector('.expand-btn').innerHTML = '⛶';
-            });
-            if (timeSeriesChart) timeSeriesChart.resize();
-            if (deficitChart) deficitChart.resize();
-
-            if (isFullscreen) {
-                container.classList.remove('fullscreen-target');
-                this.innerHTML = '⛶';
-            } else {
-                container.classList.add('fullscreen-target');
-                this.innerHTML = '✖';
-            }
+            const container = document.getElementById('map-container'); const isFullscreen = container.classList.contains('fullscreen-target');
+            document.querySelectorAll('.chart-box.fullscreen-target').forEach(el => { el.classList.remove('fullscreen-target'); el.querySelector('.expand-btn').innerHTML = '⛶'; });
+            if (timeSeriesChart) timeSeriesChart.resize(); if (deficitChart) deficitChart.resize();
+            if (isFullscreen) { container.classList.remove('fullscreen-target'); this.innerHTML = '⛶'; } else { container.classList.add('fullscreen-target'); this.innerHTML = '✖'; }
             setTimeout(() => { resizeAllCanvas(); }, 50);
         });
 
         function setupPan(wrapperId, btnId, getOffset, setOffset, maxWindow) {
-            const wrapper = document.getElementById(wrapperId); 
-            const btn = document.getElementById(btnId); 
-            let startX = null, startOffset = 0;
-            let isDrawing = false; 
-
-            wrapper.addEventListener('pointerdown', (e) => { 
-                startX = e.clientX; 
-                startOffset = getOffset(); 
-                wrapper.setPointerCapture(e.pointerId); 
-            });
-
-            wrapper.addEventListener('pointermove', (e) => { 
-                if (startX !== null) { 
-                    let delta = (startX - e.clientX) * (maxWindow / wrapper.clientWidth) * 1.5; 
-                    let newOffset = Math.max(0, Math.min(currentTime, startOffset + delta)); 
-                    setOffset(newOffset);
-                    btn.style.display = newOffset > 0 ? 'block' : 'none'; 
-                    
-                    if (!isDrawing) {
-                        isDrawing = true;
-                        requestAnimationFrame(() => { updateCharts(); isDrawing = false; });
-                    }
-                } 
-            });
-
-            wrapper.addEventListener('pointerup', () => { startX = null; }); 
-            wrapper.addEventListener('pointercancel', () => { startX = null; });
-            
-            wrapper.addEventListener('wheel', (e) => { 
-                e.preventDefault(); 
-                let currentOffset = getOffset();
-                let delta = (Math.abs(e.deltaX) > Math.abs(e.deltaY)) ? e.deltaX : e.deltaY;
-                let newOffset = Math.max(0, Math.min(currentTime, currentOffset - delta * (maxWindow / wrapper.clientWidth) * 0.5)); 
-                
-                setOffset(newOffset);
-                btn.style.display = newOffset > 0 ? 'block' : 'none'; 
-                if (!isDrawing) {
-                    isDrawing = true;
-                    requestAnimationFrame(() => { updateCharts(); isDrawing = false; });
-                }
-            }, { passive: false });
-
-            btn.addEventListener('click', () => { 
-                setOffset(0); 
-                btn.style.display = 'none'; 
-                updateCharts(); 
-            });
+            const wrapper = document.getElementById(wrapperId); const btn = document.getElementById(btnId); 
+            let startX = null, startOffset = 0, isDrawing = false; 
+            wrapper.addEventListener('pointerdown', (e) => { startX = e.clientX; startOffset = getOffset(); wrapper.setPointerCapture(e.pointerId); });
+            wrapper.addEventListener('pointermove', (e) => { if (startX !== null) { let delta = (startX - e.clientX) * (maxWindow / wrapper.clientWidth) * 1.5; let newOffset = Math.max(0, Math.min(currentTime, startOffset + delta)); setOffset(newOffset); btn.style.display = newOffset > 0 ? 'block' : 'none'; if (!isDrawing) { isDrawing = true; requestAnimationFrame(() => { updateCharts(); isDrawing = false; }); } } });
+            wrapper.addEventListener('pointerup', () => { startX = null; }); wrapper.addEventListener('pointercancel', () => { startX = null; });
+            wrapper.addEventListener('wheel', (e) => { e.preventDefault(); let currentOffset = getOffset(); let delta = (Math.abs(e.deltaX) > Math.abs(e.deltaY)) ? e.deltaX : e.deltaY; let newOffset = Math.max(0, Math.min(currentTime, currentOffset - delta * (maxWindow / wrapper.clientWidth) * 0.5)); setOffset(newOffset); btn.style.display = newOffset > 0 ? 'block' : 'none'; if (!isDrawing) { isDrawing = true; requestAnimationFrame(() => { updateCharts(); isDrawing = false; }); } }, { passive: false });
+            btn.addEventListener('click', () => { setOffset(0); btn.style.display = 'none'; updateCharts(); });
         }
-
         setupPan('time-series-wrapper', 'reset-pan-btn', () => chartPanOffset, (val) => { chartPanOffset = val; }, CHART_WINDOW);
         setupPan('timeline-wrapper', 'reset-tl-btn', () => tlPanOffset, (val) => { tlPanOffset = val; }, TIMELINE_WINDOW);
 
@@ -712,17 +704,18 @@
             document.getElementById('time-display').innerText = `${simParams.timeUnit.charAt(0).toUpperCase() + simParams.timeUnit.slice(1)} +${currentTime}`; 
             const statusEl = document.getElementById('alert-status');
             
-            if (state.ruptures.length > 0) { 
-                statusEl.innerText = `RUPTURE: ${state.ruptures.map(r => r.toUpperCase()).join(" & ")}`; 
-                statusEl.className = "status-quake"; 
-            } else if (state.sseEvents.length > 0) { 
-                let mags = state.sseEvents.map(e => `Mw${e.mag}`).join(", ");
-                statusEl.innerText = `Slow Slip Detected (${mags})`; 
-                statusEl.className = "status-normal"; 
-                statusEl.style.color = "#BF5AF2"; 
-                statusEl.style.background = "rgba(191, 90, 242, 0.2)"; 
+            // アラートはアクティブタブの領域のみをチェック
+            let groupRuptures = state.ruptures.filter(r => (activeTabGroup === 'nankai' ? NANKAI_SEGS : TRENCH_SEGS).includes(r));
+            let groupSSE = state.sseEvents.filter(e => (activeTabGroup === 'nankai' ? NANKAI_SEGS : TRENCH_SEGS).includes(e.seg));
+            
+            if (groupRuptures.length > 0) { 
+                statusEl.innerText = `RUPTURE: ${groupRuptures.map(r => r.toUpperCase()).join(" & ")}`; statusEl.className = "status-quake"; 
+            } else if (groupSSE.length > 0) { 
+                let mags = groupSSE.map(e => `Mw${e.mag}`).join(", "); statusEl.innerText = `Slow Slip Detected (${mags})`; statusEl.className = "status-normal"; statusEl.style.color = "#BF5AF2"; statusEl.style.background = "rgba(191, 90, 242, 0.2)"; 
             } else {
-                let isWarn = false; for(const key in state.segmentsInfo) { if (state.segmentsInfo[key].deficit > 800) isWarn = true; }
+                let isWarn = false; 
+                let checkSegs = activeTabGroup === 'nankai' ? NANKAI_SEGS : TRENCH_SEGS;
+                checkSegs.forEach(k => { if(state.segmentsInfo[k] && state.segmentsInfo[k].deficit / state.segmentsInfo[k].threshold > 0.9) isWarn = true; });
                 if(isWarn) { statusEl.innerText = "Critical Strain"; statusEl.className = "status-warn"; statusEl.style.color = ""; statusEl.style.background = "";}
                 else { statusEl.innerText = "System Normal"; statusEl.className = "status-normal"; statusEl.style.color = ""; statusEl.style.background = "";}
             }
@@ -738,34 +731,23 @@
             selectedStationIds.forEach((id, index) => {
                 const station = stationsGeo.find(s => s.id === id);
                 if (!station) return;
-                
                 const stationData = []; for(let i = startX; i <= endX; i++) { stationData.push((i <= currentTime && historyData[i]) ? historyData[i].stations.find(s => s.id === id).value : null); }
-                
                 newDatasets.push({ 
-                    label: station.name,
-                    data: stationData, 
-                    borderColor: stationColors[index % stationColors.length], 
-                    borderWidth: 1.5, 
-                    tension: 0, 
-                    pointRadius: 0,
+                    label: station.name, data: stationData, borderColor: stationColors[index % stationColors.length], borderWidth: 1.5, tension: 0, pointRadius: 0,
                     segment: {
                         borderColor: ctx => {
                             if (ctx.p1DataIndex === undefined) return undefined;
-                            const timeVal = timeSeriesChart.data.labels[ctx.p1DataIndex];
-                            const state = historyData[timeVal];
-                            if (!state || !state.ruptures) return undefined;
-                            
-                            if (state.ruptures.includes(station.segment)) return '#FF453A';
-                            if (state.sseEvents.some(e => e.seg === station.segment)) return '#BF5AF2';
+                            const tVal = timeSeriesChart.data.labels[ctx.p1DataIndex]; const st = historyData[tVal];
+                            if (!st || !st.ruptures) return undefined;
+                            if (st.ruptures.includes(station.segment)) return '#FF453A';
+                            if (st.sseEvents.some(e => e.seg === station.segment)) return '#BF5AF2';
                             return undefined;
                         },
                         borderWidth: ctx => {
                             if (ctx.p1DataIndex === undefined) return undefined;
-                            const timeVal = timeSeriesChart.data.labels[ctx.p1DataIndex];
-                            const state = historyData[timeVal];
-                            if (!state || !state.ruptures) return undefined;
-
-                            if (state.ruptures.includes(station.segment) || state.sseEvents.some(e => e.seg === station.segment)) return 3;
+                            const tVal = timeSeriesChart.data.labels[ctx.p1DataIndex]; const st = historyData[tVal];
+                            if (!st || !st.ruptures) return undefined;
+                            if (st.ruptures.includes(station.segment) || st.sseEvents.some(e => e.seg === station.segment)) return 3;
                             return undefined;
                         }
                     }
@@ -775,13 +757,30 @@
 
             const state = historyData[currentTime];
             if(state && state.segmentsInfo) {
-                deficitChart.data.datasets[0].data = [ state.segmentsInfo.tokai.deficit, state.segmentsInfo.tonankai.deficit, state.segmentsInfo.nankai.deficit, state.segmentsInfo.hyuganada.deficit ];
-                deficitChart.data.datasets[0].backgroundColor = [ 
-                    state.segmentsInfo.tokai.deficit > 800 ? '#FF453A' : '#FF9F0A', 
-                    state.segmentsInfo.tonankai.deficit > 800 ? '#FF453A' : '#32D74B', 
-                    state.segmentsInfo.nankai.deficit > 800 ? '#FF453A' : '#0A84FF',
-                    state.segmentsInfo.hyuganada.deficit > 100 ? '#FF453A' : '#BF5AF2' 
-                ];
+                let labels = activeTabGroup === 'nankai' ? ['Tokai', 'Tonankai', 'Nankai', 'Hyuga'] : ['Sanriku N.', 'Sanriku C.', 'Miyagi', 'Fukushima', 'Ibaraki', 'Boso'];
+                let data = [], colors = [];
+                
+                if (activeTabGroup === 'nankai') {
+                    data = [state.segmentsInfo.tokai.deficit, state.segmentsInfo.tonankai.deficit, state.segmentsInfo.nankai.deficit, state.segmentsInfo.hyuganada.deficit];
+                    colors = [
+                        state.segmentsInfo.tokai.deficit > 800 ? '#FF453A' : '#FF9F0A', 
+                        state.segmentsInfo.tonankai.deficit > 800 ? '#FF453A' : '#32D74B', 
+                        state.segmentsInfo.nankai.deficit > 800 ? '#FF453A' : '#0A84FF',
+                        state.segmentsInfo.hyuganada.deficit > 100 ? '#FF453A' : '#BF5AF2' 
+                    ];
+                } else {
+                    let segs = TRENCH_SEGS;
+                    segs.forEach(k => {
+                        let val = state.segmentsInfo[k].deficit;
+                        let thresh = state.segmentsInfo[k].threshold;
+                        data.push(val);
+                        colors.push(val / thresh > 0.9 ? '#FF453A' : laneColors[k]);
+                    });
+                }
+                
+                deficitChart.data.labels = labels;
+                deficitChart.data.datasets[0].data = data;
+                deficitChart.data.datasets[0].backgroundColor = colors;
                 deficitChart.update();
             }
             drawTimeline();
@@ -795,29 +794,37 @@
             let startT = endT - TIMELINE_WINDOW;
 
             tlCtx.lineWidth = 1; tlCtx.strokeStyle = "rgba(255, 255, 255, 0.1)"; tlCtx.fillStyle = "rgba(255, 255, 255, 0.4)"; tlCtx.font = "10px -apple-system, sans-serif"; tlCtx.textAlign = "left"; tlCtx.textBaseline = "middle";
-            for (const [key, yRatio] of Object.entries(lanesY)) { let y = h * yRatio; tlCtx.beginPath(); tlCtx.moveTo(0, y); tlCtx.lineTo(w, y); tlCtx.stroke(); tlCtx.fillText(key.toUpperCase(), 5, y - 8); }
+            
+            // タブに応じたレーンを描画
+            let currentLanes = lanesY[activeTabGroup];
+            for (const [key, yRatio] of Object.entries(currentLanes)) { 
+                let y = h * yRatio; tlCtx.beginPath(); tlCtx.moveTo(0, y); tlCtx.lineTo(w, y); tlCtx.stroke(); 
+                let label = key.toUpperCase().replace('SANRIKU_N', 'SANRIKU N').replace('SANRIKU_C', 'SANRIKU C');
+                tlCtx.fillText(label, 5, y - 8); 
+            }
 
             let getX = (t) => ((t - startT) / TIMELINE_WINDOW) * w;
-
-            let lastOccurred = { tokai: null, tonankai: null, nankai: null, hyuganada: null };
+            let lastOccurred = {};
 
             timelineClusters.forEach(cluster => {
                 let isVisible = (cluster.endTime >= startT - 50 && cluster.startTime <= endT + 50);
+                
+                // アクティブなタブのイベントのみ抽出
+                let activeEvents = cluster.events.filter(ev => currentLanes[ev.seg] !== undefined);
+                if (activeEvents.length === 0) return;
 
-                cluster.events.forEach(ev => {
+                activeEvents.forEach(ev => {
                     let prevTime = lastOccurred[ev.seg];
-                    if (prevTime !== null && isVisible) {
+                    if (prevTime !== null && prevTime !== undefined && isVisible) {
                         let interval = ev.time - prevTime;
-                        let prevX = getX(prevTime);
-                        let currX = getX(ev.time);
-                        let y = h * lanesY[ev.seg];
+                        let prevX = getX(prevTime); let currX = getX(ev.time); let y = h * currentLanes[ev.seg];
                         
                         tlCtx.strokeStyle = "rgba(255, 255, 255, 0.15)"; tlCtx.lineWidth = 2;
                         tlCtx.beginPath(); tlCtx.moveTo(Math.max(0, prevX), y); tlCtx.lineTo(currX, y); tlCtx.stroke();
                         
                         if (currX - prevX > 35) {
-                            tlCtx.fillStyle = "rgba(255, 255, 255, 0.8)"; tlCtx.textAlign = "center"; tlCtx.font = "11px -apple-system, sans-serif";
-                            if (ev.seg === 'hyuganada') tlCtx.font = "9px -apple-system, sans-serif";
+                            tlCtx.fillStyle = "rgba(255, 255, 255, 0.8)"; tlCtx.textAlign = "center"; tlCtx.font = "10px -apple-system, sans-serif";
+                            if (ev.seg === 'hyuganada' || ev.seg === 'ibaraki') tlCtx.font = "9px -apple-system, sans-serif";
                             tlCtx.fillText(`${interval}y`, prevX + (currX - prevX) / 2, y - 6);
                         }
                     }
@@ -827,23 +834,23 @@
                 if (!isVisible) return;
 
                 tlCtx.strokeStyle = "rgba(255, 255, 255, 0.4)"; tlCtx.lineWidth = 2;
-                if (cluster.events.length > 1) {
+                if (activeEvents.length > 1) {
                     tlCtx.beginPath();
-                    let firstEv = cluster.events[0]; let firstX = getX(firstEv.time); let firstY = h * lanesY[firstEv.seg];
-                    for (let i = 1; i < cluster.events.length; i++) {
-                        let ev = cluster.events[i];
-                        tlCtx.moveTo(firstX, firstY); tlCtx.lineTo(getX(ev.time), h * lanesY[ev.seg]);
+                    let firstEv = activeEvents[0]; let firstX = getX(firstEv.time); let firstY = h * currentLanes[firstEv.seg];
+                    for (let i = 1; i < activeEvents.length; i++) {
+                        let ev = activeEvents[i];
+                        tlCtx.moveTo(firstX, firstY); tlCtx.lineTo(getX(ev.time), h * currentLanes[ev.seg]);
                     }
                     tlCtx.stroke();
                 }
 
                 let radius = 4 + Math.pow(Math.max(0, cluster.mag - 7.0), 1.6) * 8; radius = Math.max(4, Math.min(30, radius)); 
-                let color = cluster.mag >= 8.8 ? '#FF453A' : (cluster.mag >= 8.2 ? '#FF9F0A' : '#FFD60A');
-                if(cluster.mag < 7.5) color = '#BF5AF2'; 
+                let color = cluster.mag >= 8.8 ? '#FF453A' : (cluster.mag >= 8.0 ? '#FF9F0A' : '#FFD60A');
+                if(cluster.mag < 7.5) color = laneColors[activeEvents[0].seg]; // M7前半は各領域の色
 
                 let minY = h, minX = w;
-                cluster.events.forEach(ev => {
-                    let x = getX(ev.time); let y = h * lanesY[ev.seg];
+                activeEvents.forEach(ev => {
+                    let x = getX(ev.time); let y = h * currentLanes[ev.seg];
                     if (y < minY) { minY = y; minX = x; } 
                     tlCtx.beginPath(); tlCtx.arc(x, y, radius, 0, Math.PI * 2); tlCtx.fillStyle = laneColors[ev.seg]; tlCtx.fill();
                     tlCtx.lineWidth = cluster.mag >= 8.8 ? 2 : 1.5; tlCtx.strokeStyle = color; tlCtx.stroke();
@@ -857,18 +864,8 @@
         function togglePlay() { 
             isPlaying = !isPlaying; 
             document.getElementById('play-pause-btn').innerText = isPlaying ? "Pause" : "Play"; 
-            
-            if (isPlaying) { 
-                playInterval = setInterval(() => { 
-                    currentTime++; 
-                    if (chartPanOffset > 0) chartPanOffset++;
-                    if (tlPanOffset > 0) tlPanOffset++;
-                    computeNextStep(); 
-                    updateUI(); 
-                }, simParams.playSpeedMs); 
-            } else { 
-                clearInterval(playInterval); 
-            } 
+            if (isPlaying) { playInterval = setInterval(() => { currentTime++; if (chartPanOffset > 0) chartPanOffset++; if (tlPanOffset > 0) tlPanOffset++; computeNextStep(); updateUI(); }, simParams.playSpeedMs); } 
+            else { clearInterval(playInterval); } 
         }
         
         document.getElementById('play-pause-btn').addEventListener('click', togglePlay);
